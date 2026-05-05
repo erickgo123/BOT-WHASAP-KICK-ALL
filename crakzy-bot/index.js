@@ -3,7 +3,6 @@ const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
-const path = require('path');
 
 process.on('unhandledRejection', (reason) => console.log('Unhandled Rejection:', reason));
 process.on('uncaughtException', (err) => console.log('Uncaught Exception:', err));
@@ -19,27 +18,17 @@ const BOT_OWNER_3 = '3197010548990@s.whatsapp.net';
 
 let FOTO_BUFFER = null;
 
-// 👑 owners dinámicos
-global.owner = fs.existsSync('./config.json')
-  ? JSON.parse(fs.readFileSync('./config.json')).owner
-  : [];
-
 const log = (msg) => console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 🔧 icon helper seguro
-async function setIcon(sock, from, buffer) {
+/* =========================
+   🔧 FIX OWNER DINÁMICO
+========================= */
+function getOwners() {
   try {
-    if (!buffer) return;
-
-    const img = Buffer.isBuffer(buffer)
-      ? buffer
-      : Buffer.from(buffer);
-
-    await sock.updateProfilePicture(from, img);
-
-  } catch (e) {
-    console.log('Icon error:', e.message);
+    return JSON.parse(fs.readFileSync('./config.json')).owner || [];
+  } catch {
+    return [];
   }
 }
 
@@ -60,7 +49,6 @@ async function startBot() {
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update;
-
     if (qr) qrcode.generate(qr, { small: true });
 
     if (connection === 'close') {
@@ -88,12 +76,20 @@ async function startBot() {
 
       const isBotAdmins = metadata.participants.find(p => p.id === botJid)?.admin !== null;
 
+      // alias
+      if (text === '.follar') text = '.raid';
+      if (text === '.follar2') text = '.raid2';
+
+      /* =========================
+         🔐 FIX ISMOD (OWNER DINÁMICO)
+      ========================= */
       const isMod = (
         sender === BOT_OWNER ||
         sender === BOT_OWNER_LID ||
         sender === BOT_OWNER_2 ||
         sender === BOT_OWNER_LID_2 ||
-        sender === BOT_OWNER_3
+        sender === BOT_OWNER_3 ||
+        getOwners().includes(sender)
       );
 
       if (text === '.menu') {
@@ -109,44 +105,62 @@ async function startBot() {
         });
       }
 
-      // 👑 OWNER SYSTEM
+      /* =========================
+         👑 OWNER COMMANDS
+      ========================= */
+
       else if (text.startsWith('.addowner')) {
         if (!isMod) return;
+
+        let owners = getOwners();
 
         let number = text.split(' ')[1];
         if (!number) return;
 
         number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
 
-        if (!global.owner.includes(number)) {
-          global.owner.push(number);
-          fs.writeFileSync('./config.json', JSON.stringify({ owner: global.owner }, null, 2));
+        if (!owners.includes(number)) {
+          owners.push(number);
+          fs.writeFileSync('./config.json', JSON.stringify({ owner: owners }, null, 2));
         }
 
-        await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
+        await sock.sendMessage(from, {
+          text: `✔ Owner agregado: ${number}`
+        });
       }
 
       else if (text.startsWith('.delowner')) {
         if (!isMod) return;
 
+        let owners = getOwners();
+
         let number = text.split(' ')[1];
         if (!number) return;
 
         number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
 
-        global.owner = global.owner.filter(v => v !== number);
-        fs.writeFileSync('./config.json', JSON.stringify({ owner: global.owner }, null, 2));
+        owners = owners.filter(v => v !== number);
 
-        await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
+        fs.writeFileSync('./config.json', JSON.stringify({ owner: owners }, null, 2));
+
+        await sock.sendMessage(from, {
+          text: `✔ Owner eliminado: ${number}`
+        });
       }
 
       else if (text === '.listowner') {
-        const list = global.owner.length
-          ? global.owner.map(v => '• ' + v.replace('@s.whatsapp.net','')).join('\n')
+        const owners = getOwners();
+
+        const list = owners.length
+          ? owners.map(v => '• ' + v.replace('@s.whatsapp.net','')).join('\n')
           : 'No hay owners';
 
-        await sock.sendMessage(from, { text: `📋 Owners:\n${list}` });
+        await sock.sendMessage(from, {
+          text: `📋 Owners:\n${list}`
+        });
       }
+
+      /* ========================= */
 
       if (!isMod) return;
 
@@ -155,26 +169,6 @@ async function startBot() {
       }
       else if (text === '.unlock') {
         await sock.groupSettingUpdate(from, 'not_announcement');
-      }
-      else if (text === '.setup') {
-        await setIcon(sock, from, FOTO_BUFFER);
-        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
-        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
-      }
-      else if (text.startsWith('.tag ')) {
-        const mensaje = text.slice(5);
-        const mentions = metadata.participants.map(p => p.id);
-
-        await sock.sendMessage(from, {
-          text: mensaje,
-          mentions
-        });
-      }
-      else if (text === '.follar') {
-        await setIcon(sock, from, FOTO_BUFFER);
-      }
-      else if (text === '.follar2') {
-        // sin icono
       }
 
     } catch (e) {
