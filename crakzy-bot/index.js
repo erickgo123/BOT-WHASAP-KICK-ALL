@@ -37,6 +37,11 @@ function getOwners() {
   }
 }
 
+function saveOwners(owners) {
+  const cleanOwners = [...new Set(owners.map(o => o.replace(/[^0-9]/g, '')))];
+  fs.writeFileSync('./config.json', JSON.stringify({ owner: cleanOwners }, null, 2));
+}
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
@@ -111,14 +116,56 @@ async function startBot() {
       if (text === '.menu') {
         if (!isMod) return;
         await sock.sendMessage(from, {
-          text: `📋 MENÚ\n.lock\n.unlock\n.setup\n.tag\n.mylid\n.follar\n.follar2`
+          text: `📋 MENÚ\n.lock\n.unlock\n.setup\n.tag\n.mylid\n.follar\n.follar2\n.addowner\n.delowner\n.listowner`
         });
       }
 
       if (text === '.mylid' || text === '.id') {
         await sock.sendMessage(from, {
-          text: `Tu lid es:\n${sender}`
+          text: `Tu lid es:\n${sender}\nSolo número:\n${senderNum}`
         });
+      }
+
+      /* =========================
+         👑 OWNER COMMANDS
+      ========================= */
+
+      else if (text.startsWith('.addowner')) {
+        if (!isMod) return;
+
+        let number = text.split(' ')[1];
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
+
+        number = number.replace(/[^0-9]/g, '');
+        if (!number) return sock.sendMessage(from, { text: 'Número inválido' });
+
+        let owners = getOwners();
+        if (!owners.includes(number)) {
+          owners.push(number);
+          saveOwners(owners);
+        }
+
+        await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
+      }
+
+      else if (text.startsWith('.delowner')) {
+        if (!isMod) return;
+
+        let number = text.split(' ')[1];
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
+
+        number = number.replace(/[^0-9]/g, '');
+        let owners = getOwners().filter(v => v!== number);
+        saveOwners(owners);
+
+        await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
+      }
+
+      else if (text === '.listowner') {
+        if (!isMod) return;
+        const owners = getOwners();
+        const list = owners.length? owners.map(v => '• ' + v).join('\n') : 'No hay owners';
+        await sock.sendMessage(from, { text: `📋 Owners:\n${list}` });
       }
 
       /* =========================
@@ -166,9 +213,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners()];
         const miembros = metadata.participants.filter(p =>
-         !p.admin &&
+        !p.admin &&
           p.id!== botJid &&
-         !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+        !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
