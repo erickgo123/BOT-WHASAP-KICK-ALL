@@ -37,11 +37,6 @@ function getOwners() {
   }
 }
 
-function saveOwners(owners) {
-  const cleanOwners = [...new Set(owners.map(o => o.replace(/[^0-9]/g, '')))];
-  fs.writeFileSync('./config.json', JSON.stringify({ owner: cleanOwners }, null, 2));
-}
-
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
@@ -53,11 +48,7 @@ async function startBot() {
     browser: ['DEATH CRAKZY', 'Chrome', '120.0.0'],
   });
 
-  try {
-    FOTO_BUFFER = fs.readFileSync('./gojo.jpg');
-  } catch {
-    log('⚠️ No se encontró gojo.jpg');
-  }
+  FOTO_BUFFER = fs.readFileSync('./gojo.jpg');
 
   sock.ev.on('creds.update', saveCreds);
 
@@ -84,164 +75,109 @@ async function startBot() {
       if (!from.endsWith('@g.us')) return;
 
       let text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-      const rawSender = msg.key.participant || msg.key.remoteJid;
-      const senderNum = rawSender.replace(/[^0-9]/g, '');
+      const sender = msg.key.participant || msg.key.remoteJid;
+
+      const senderNum = sender.replace(/[^0-9]/g, '');
 
       const metadata = await sock.groupMetadata(from);
-      const botJid = sock.user.id.replace(/:[0-9]+/, '');
-      const isBotAdmins = metadata.participants.find(p => p.id.replace(/:[0-9]+/, '') === botJid)?.admin!== null;
+      const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+
+      const isBotAdmins =
+        metadata.participants.find(p => p.id === botJid)?.admin!== null;
 
       // alias
       if (text === '.follar') text = '.raid';
       if (text === '.follar2') text = '.raid2';
 
       /* =========================
-         🔐 PERMISOS MOD - FIX LID
+         🔐 PERMISOS MOD (FIX REAL)
       ========================= */
-      const hardOwners = [BOT_OWNER, BOT_OWNER_LID, BOT_OWNER_2, BOT_OWNER_LID_2, BOT_OWNER_3, BOT_OWNER_LID_3];
-      const dynamicOwners = getOwners();
-      const isMod = hardOwners.includes(senderNum) || dynamicOwners.includes(senderNum);
+
+      const hardOwners = [
+        BOT_OWNER,
+        BOT_OWNER_LID,
+        BOT_OWNER_2,
+        BOT_OWNER_LID_2,
+        BOT_OWNER_3,
+        BOT_OWNER_LID_3
+      ];
+
+      const isMod =
+        hardOwners.includes(senderNum) ||
+        getOwners().includes(senderNum);
+
+      /* ========================= */
 
       if (text === '.menu') {
         if (!isMod) return;
         await sock.sendMessage(from, {
-          text: `📋 MENÚ CRAKZY\n\n.lock - Cerrar grupo\n.unlock - Abrir grupo\n.setup - Nuke grupo\n.tag texto - Mencionar todos\n.raid - Spam + Kick\n.raid2 - Kick masivo\n.mylid - Ver tu ID\n.addowner - Agregar owner\n.delowner - Quitar owner\n.listowner - Lista owners`
+          text: `📋 MENÚ\n.lock\n.unlock\n.setup\n.tag\n.mylid\n.follar\n.follar2`
         });
       }
 
       if (text === '.mylid' || text === '.id') {
         await sock.sendMessage(from, {
-          text: `Tu ID:\n${rawSender}\nSolo número:\n${senderNum}`
+          text: `Tu lid es:\n${sender}`
         });
       }
 
       /* =========================
-         👑 OWNER COMMANDS
-      ========================= */
-
-      else if (text.startsWith('.addowner')) {
-        if (!isMod) return;
-
-        let number = text.split(' ')[1];
-        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
-
-        number = number.replace(/[^0-9]/g, '');
-        if (!number) return sock.sendMessage(from, { text: 'Número inválido' });
-
-        let owners = getOwners();
-        if (!owners.includes(number)) {
-          owners.push(number);
-          saveOwners(owners);
-        }
-
-        await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
-      }
-
-      else if (text.startsWith('.delowner')) {
-        if (!isMod) return;
-
-        let number = text.split(' ')[1];
-        if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
-
-        number = number.replace(/[^0-9]/g, '');
-        let owners = getOwners().filter(v => v!== number);
-        saveOwners(owners);
-
-        await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
-      }
-
-      else if (text === '.listowner') {
-        if (!isMod) return;
-        const owners = getOwners();
-        const list = owners.length? owners.map(v => '• ' + v).join('\n') : 'No hay owners';
-        await sock.sendMessage(from, { text: `📋 Owners:\n${list}` });
-      }
-
-      /* =========================
-         ⚔️ COMANDOS MOD
+         COMANDOS MOD
       ========================= */
 
       if (!isMod) return;
 
       if (text === '.lock') {
-        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
         await sock.groupSettingUpdate(from, 'announcement');
-        await sock.sendMessage(from, { text: '🔒 Grupo cerrado' });
       }
 
       else if (text === '.unlock') {
-        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
         await sock.groupSettingUpdate(from, 'not_announcement');
-        await sock.sendMessage(from, { text: '🔓 Grupo abierto' });
       }
 
       else if (text === '.setup') {
-        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
-        
-        try {
-          if (FOTO_BUFFER) await sock.updateProfilePicture(from, FOTO_BUFFER);
-          await sleep(1000);
-          await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
-          await sleep(1000);
-          await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
-          await sock.sendMessage(from, { text: '⚡ Setup completado' });
-        } catch (e) {
-          await sock.sendMessage(from, { text: '❌ Error: ' + e.message });
-        }
+        await sock.updateProfilePicture(from, FOTO_BUFFER);
+        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
+        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
       }
 
-      else if (text.startsWith('.tag')) {
-        const mensaje = text.slice(4).trim() || 'Mención masiva';
+      else if (text.startsWith('.tag ')) {
+        const mensaje = text.slice(5);
         const mentions = metadata.participants.map(p => p.id);
+
         await sock.sendMessage(from, {
-          text: `📢 ${mensaje}`,
+          text: mensaje,
           mentions
         });
       }
 
       else if (text === '.raid' || text === '.raid2') {
-        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
+
+        if (!isBotAdmins) return;
 
         await sock.groupSettingUpdate(from, 'announcement');
 
         if (text === '.raid') {
-          if (FOTO_BUFFER) await sock.updateProfilePicture(from, FOTO_BUFFER);
-          await sleep(1000);
+          await sock.updateProfilePicture(from, FOTO_BUFFER);
         }
 
         await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
-        await sleep(1000);
         await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
-        await sleep(1000);
 
-        const allOwners = [...hardOwners,...dynamicOwners];
-        const miembros = metadata.participants.filter(p => {
-          const num = p.id.replace(/[^0-9]/g, '');
-          return!p.admin && p.id.replace(/:[0-9]+/, '')!== botJid &&!allOwners.includes(num);
-        });
+        const allOwners = [...hardOwners,...getOwners()];
+        const miembros = metadata.participants.filter(p =>
+         !p.admin &&
+          p.id!== botJid &&
+         !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+        );
 
-        const mentions = metadata.participants.map(p => p.id);
+        const chunkSize = 1024;
 
-        if (text === '.raid') {
-          for (let i = 0; i < 10; i++) {
-            await sock.sendMessage(from, { 
-              text: `💀 CRAKZY DOMINA ${i+1}/10`, 
-              mentions 
-            });
-            await sleep(800);
-          }
-        }
-
-        const chunkSize = 5;
         for (let i = 0; i < miembros.length; i += chunkSize) {
           const chunk = miembros.slice(i, i + chunkSize).map(m => m.id);
-          try {
-            await sock.groupParticipantsUpdate(from, chunk, 'remove');
-            await sleep(1500);
-          } catch {}
+          await sock.groupParticipantsUpdate(from, chunk, 'remove');
+          await sleep(1200);
         }
-
-        await sock.sendMessage(from, { text: '☠️ Raid completado' });
       }
 
     } catch (e) {
