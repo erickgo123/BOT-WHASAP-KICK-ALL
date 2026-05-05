@@ -85,8 +85,13 @@ async function startBot() {
       const isBotAdmins =
         metadata.participants.find(p => p.id === botJid)?.admin !== null;
 
+      // alias
       if (text === '.follar') text = '.raid';
       if (text === '.follar2') text = '.raid2';
+
+      /* =========================
+         🔐 PERMISOS MOD (FIX REAL)
+      ========================= */
 
       const hardOwners = [
         BOT_OWNER,
@@ -101,6 +106,8 @@ async function startBot() {
         hardOwners.includes(senderNum) ||
         getOwners().includes(senderNum);
 
+      /* ========================= */
+
       if (text === '.menu') {
         if (!isMod) return;
         await sock.sendMessage(from, {
@@ -113,6 +120,10 @@ async function startBot() {
           text: `Tu lid es:\n${sender}`
         });
       }
+
+      /* =========================
+         COMANDOS MOD
+      ========================= */
 
       if (!isMod) return;
 
