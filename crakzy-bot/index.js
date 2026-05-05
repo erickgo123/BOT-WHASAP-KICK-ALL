@@ -70,7 +70,7 @@ async function startBot() {
 
       let text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
       const rawSender = msg.key.participant || msg.key.remoteJid;
-      const sender = rawSender.split(':')[0] + '@s.whatsapp.net';
+      const senderNum = rawSender.replace(/[^0-9]/g, ''); // Solo números
 
       const metadata = await sock.groupMetadata(from);
       const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
@@ -82,17 +82,16 @@ async function startBot() {
       if (text === '.follar2') text = '.raid2';
 
       /* =========================
-         🔐 FIX ISMOD (OWNER DINÁMICO)
+         🔐 FIX ISMOD - COMPARA SOLO NÚMEROS
       ========================= */
       const ownersList = getOwners();
       const isMod = (
-        sender === BOT_OWNER ||
+        senderNum === BOT_OWNER.replace(/[^0-9]/g, '') ||
         rawSender === BOT_OWNER_LID ||
-        sender === BOT_OWNER_2 ||
+        senderNum === BOT_OWNER_2.replace(/[^0-9]/g, '') ||
         rawSender === BOT_OWNER_LID_2 ||
-        sender === BOT_OWNER_3 ||
-        ownersList.includes(sender) ||
-        ownersList.includes(rawSender)
+        senderNum === BOT_OWNER_3.replace(/[^0-9]/g, '') ||
+        ownersList.some(o => o.replace(/[^0-9]/g, '') === senderNum)
       );
 
       if (text === '.menu') {
@@ -104,7 +103,7 @@ async function startBot() {
 
       if (text === '.mylid' || text === '.id') {
         await sock.sendMessage(from, {
-          text: `Tu lid es:\n${rawSender}\nTu número:\n${sender}`
+          text: `Tu lid es:\n${rawSender}\nSolo números:\n${senderNum}`
         });
       }
 
@@ -117,9 +116,10 @@ async function startBot() {
 
         let owners = getOwners();
         let number = text.split(' ')[1];
-        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx o.addowner @lid' });
 
-        number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+        number = number.replace(/[^0-9]/g, ''); // guarda solo números
+        if (!number) return;
 
         if (!owners.includes(number)) {
           owners.push(number);
@@ -138,8 +138,8 @@ async function startBot() {
         let number = text.split(' ')[1];
         if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
 
-        number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-        owners = owners.filter(v => v!== number);
+        number = number.replace(/[^0-9]/g, '');
+        owners = owners.filter(v => v.replace(/[^0-9]/g, '')!== number);
 
         fs.writeFileSync('./config.json', JSON.stringify({ owner: owners }, null, 2));
 
@@ -152,7 +152,7 @@ async function startBot() {
         if (!isMod) return;
         const owners = getOwners();
         const list = owners.length
-         ? owners.map(v => '• ' + v.replace('@s.whatsapp.net','')).join('\n')
+         ? owners.map(v => '• ' + v).join('\n')
           : 'No hay owners';
 
         await sock.sendMessage(from, {
