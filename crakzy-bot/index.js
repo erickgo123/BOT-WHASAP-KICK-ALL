@@ -53,7 +53,7 @@ async function startBot() {
 
     if (connection === 'close') {
       const statusCode = (lastDisconnect?.error instanceof Boom)?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      const shouldReconnect = statusCode!== DisconnectReason.loggedOut;
       if (shouldReconnect) setTimeout(startBot, 5000);
     } else if (connection === 'open') {
       log('BOT CONECTADO');
@@ -69,12 +69,13 @@ async function startBot() {
       if (!from.endsWith('@g.us')) return;
 
       let text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-      const sender = msg.key.participant || msg.key.remoteJid;
+      const rawSender = msg.key.participant || msg.key.remoteJid;
+      const sender = rawSender.split(':')[0] + '@s.whatsapp.net';
 
       const metadata = await sock.groupMetadata(from);
       const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
 
-      const isBotAdmins = metadata.participants.find(p => p.id === botJid)?.admin !== null;
+      const isBotAdmins = metadata.participants.find(p => p.id === botJid)?.admin!== null;
 
       // alias
       if (text === '.follar') text = '.raid';
@@ -83,13 +84,15 @@ async function startBot() {
       /* =========================
          🔐 FIX ISMOD (OWNER DINÁMICO)
       ========================= */
+      const ownersList = getOwners();
       const isMod = (
         sender === BOT_OWNER ||
-        sender === BOT_OWNER_LID ||
+        rawSender === BOT_OWNER_LID ||
         sender === BOT_OWNER_2 ||
-        sender === BOT_OWNER_LID_2 ||
+        rawSender === BOT_OWNER_LID_2 ||
         sender === BOT_OWNER_3 ||
-        getOwners().includes(sender)
+        ownersList.includes(sender) ||
+        ownersList.includes(rawSender)
       );
 
       if (text === '.menu') {
@@ -101,7 +104,7 @@ async function startBot() {
 
       if (text === '.mylid' || text === '.id') {
         await sock.sendMessage(from, {
-          text: `Tu lid es:\n${sender}`
+          text: `Tu lid es:\n${rawSender}\nTu número:\n${sender}`
         });
       }
 
@@ -113,9 +116,8 @@ async function startBot() {
         if (!isMod) return;
 
         let owners = getOwners();
-
         let number = text.split(' ')[1];
-        if (!number) return;
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
 
         number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
 
@@ -133,13 +135,11 @@ async function startBot() {
         if (!isMod) return;
 
         let owners = getOwners();
-
         let number = text.split(' ')[1];
-        if (!number) return;
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
 
         number = number.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-
-        owners = owners.filter(v => v !== number);
+        owners = owners.filter(v => v!== number);
 
         fs.writeFileSync('./config.json', JSON.stringify({ owner: owners }, null, 2));
 
@@ -149,10 +149,10 @@ async function startBot() {
       }
 
       else if (text === '.listowner') {
+        if (!isMod) return;
         const owners = getOwners();
-
         const list = owners.length
-          ? owners.map(v => '• ' + v.replace('@s.whatsapp.net','')).join('\n')
+         ? owners.map(v => '• ' + v.replace('@s.whatsapp.net','')).join('\n')
           : 'No hay owners';
 
         await sock.sendMessage(from, {
