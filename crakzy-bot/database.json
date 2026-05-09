@@ -1,0 +1,20 @@
+{
+  "users": {
+    "189915467931651@lid": {
+      "money": 100008002,
+      "bank": 0,
+      "lastDaily": 1778212162723,
+      "dailyStreak": 1
+    },
+    "120363428526954295@g.us": {
+      "money": 0,
+      "bank": 0,
+      "lastDaily": 0,
+      "dailyStreak": 0
+    },
+    "172671123902596@lid": {
+      "money": 9756,
+      "bank": 0
+    }
+  }
+}

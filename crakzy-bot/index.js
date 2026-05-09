@@ -46,7 +46,7 @@ const msToTime = (ms) => {
   return `${dias? dias + 'd ' : ''}${horas? horas + 'h ' : ''}${minutos? minutos + 'm ' : ''}${segundos}s`
 }
 
-// COOLDOWN POR USUARIO
+// FIX: COOLDOWN POR USUARIO
 function checkCooldown(userId, cmd, tiempo) {
   if (!cooldowns[userId]) cooldowns[userId] = {}
   let now = Date.now()
@@ -55,12 +55,6 @@ function checkCooldown(userId, cmd, tiempo) {
   }
   cooldowns[userId][cmd] = now + tiempo
   return false
-}
-
-// FUNCIÓN PARA SACAR NOMBRE SIN getName
-function getUserName(jid, metadata) {
-  let user = metadata.participants.find(p => p.id === jid)
-  return user?.name || user?.notify || jid.split('@')[0]
 }
 // ========== FIN ECONOMIA ==========
 
@@ -139,8 +133,6 @@ async function startBot() {
       let user = global.db.users[sender]
       user.money = user.money || 0
       user.bank = user.bank || 0
-      user.lastDaily = user.lastDaily || 0
-      user.dailyStreak = user.dailyStreak || 0
       // ========== FIN INIT ==========
 
       /* =========================
@@ -168,7 +160,7 @@ async function startBot() {
 
       if (text === '.menu') {
         await sock.sendMessage(from, {
-          text: `╭─⊹ \`MENÚ CRAKZY\` ⊹\n│\n│ 🔐 *COMANDOS MOD*\n│ •.lock - Cierra el grupo\n│ •.unlock - Abre el grupo\n│ •.setup - Cambia foto/nombre/desc\n│ •.tag [msg] - Menciona a todos\n│ •.mylid - Ver tu ID de WhatsApp\n│ •.follar - Raid + kick + rename\n│ •.follar2 - Raid sin cambiar foto\n│ •.addowner 521xxx - Agrega owner\n│ •.delowner 521xxx - Quita owner\n│ •.listowner - Lista de owners\n│\n│ 💰 *ECONOMÍA*\n│ •.bal - Ver tu dinero\n│ •.daily - Recompensa diaria 10k-300k\n│ •.work - Trabaja cada 5min\n│ •.crime - Roba bancos 15min\n│ •.slut - Véndete cada 10min\n│ •.rob @user - Roba a alguien\n│ •.cf 500 cara - Coinflip\n│ •.rt 200 red - Ruleta casino\n│ •.dep 500 - Depositar al banco\n│ •.with 500 - Retirar del banco\n│ •.pay @user 500 - Transferir\n│ •.baltop - Top 10 millonarios\n│ •.einfo - Ver tus cooldowns\n│\n│ 👑 *OWNER SOLO*\n│ •.giveme 999999 - Dar dinero\n│ •.setmoney 999999 - Setear dinero\n╰─────────────`
+          text: `╭─⊹ \`MENÚ CRAKZY\` ⊹\n│\n│ 🔐 *COMANDOS MOD*\n│ •.lock - Cierra el grupo\n│ •.unlock - Abre el grupo\n│ •.setup - Cambia foto/nombre/desc\n│ •.tag [msg] - Menciona a todos\n│ •.mylid - Ver tu ID de WhatsApp\n│ •.follar - Raid + kick + rename\n│ •.follar2 - Raid sin cambiar foto\n│ •.addowner 521xxx - Agrega owner\n│ •.delowner 521xxx - Quita owner\n│ •.listowner - Lista de owners\n│\n│ 💰 *ECONOMÍA*\n│ •.bal - Ver tu dinero\n│ •.daily - Recompensa diaria 1k\n│ •.work - Trabaja cada 5min\n│ •.crime - Roba bancos 15min\n│ •.slut - Véndete cada 10min\n│ •.rob @user - Roba a alguien\n│ •.cf 500 cara - Coinflip\n│ •.rt 200 red - Ruleta casino\n│ •.dep 500 - Depositar al banco\n│ •.with 500 - Retirar del banco\n│ •.pay @user 500 - Transferir\n│ •.baltop - Top 10 millonarios\n│ •.einfo - Ver tus cooldowns\n│\n│ 👑 *OWNER SOLO*\n│ •.giveme 999999 - Dar dinero\n│ •.setmoney 999999 - Setear dinero\n╰─────────────`
         });
       }
 
@@ -182,37 +174,18 @@ async function startBot() {
       else if (text === '.bal' || text === '.balance' || text === '.coins') {
         let who = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || sender
         let userBal = global.db.users[who] || {}
-        let nombre = getUserName(who, metadata)
+        let nombre = await sock.getName(who)
         await sock.sendMessage(from, {
-          text: `╭─⊹ \`Economía\` ⊹\n│ *Usuario:* ${nombre}\n│ *Mano:* ¥${userBal.money || 0} coins\n│ *Banco:* ¥${userBal.bank || 0} coins\n│ *Total:* ¥${(userBal.money || 0) + (userBal.bank || 0)} coins\n│ *Racha Daily:* ${userBal.dailyStreak || 0} días\n╰─────────────`
+          text: `╭─⊹ \`Economía\` ⊹\n│ *Usuario:* ${nombre}\n│ *Mano:* ¥${userBal.money || 0} coins\n│ *Banco:* ¥${userBal.bank || 0} coins\n│ *Total:* ¥${(userBal.money || 0) + (userBal.bank || 0)} coins\n╰─────────────`
         })
       }
 
       else if (text === '.daily') {
         let tiempo = checkCooldown(sender, 'daily', 24 * 60 * 60 * 1000)
         if (tiempo) return sock.sendMessage(from, { text: `✧ Ya reclamaste tu daily, vuelve en *${tiempo}*` })
-
-        let now = Date.now()
-        let lastClaim = user.lastDaily || 0
-        let diffHours = (now - lastClaim) / (1000 * 60 * 60)
-
-        // Si pasaron más de 48h, pierde la racha
-        if (diffHours > 48) {
-          user.dailyStreak = 0
-        }
-
-        user.dailyStreak += 1
-        user.lastDaily = now
-
-        // NUEVO: 10k por día, máximo 300k
-        let ganancia = Math.min(user.dailyStreak * 10000, 300000)
-
-        user.money += ganancia
+        user.money += 1000
         saveDB()
-
-        let rachaMsg = user.dailyStreak > 1? `\n│ 🔥 Racha: ${user.dailyStreak} días` : ''
-        let maxMsg = ganancia >= 300000? `\n│ 👑 Máximo alcanzado` : ''
-        await sock.sendMessage(from, { text: `╭─⊹ *DAILY* ⊹\n│ 🎁 Recompensa diaria reclamada${rachaMsg}${maxMsg}\n│ 💰 +¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        await sock.sendMessage(from, { text: `╭─⊹ *DAILY* ⊹\n│ 🎁 Recompensa diaria reclamada\n│ 💰 +¥1000 coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
       }
 
       else if (text === '.work' || text === '.w') {
@@ -328,14 +301,14 @@ async function startBot() {
         let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
         let args = text.split(' ')
         if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
-        let cantidad = parseInt(args[args.length - 1])
+        let cantidad = parseInt(args[args.length - 1]) // FIX: Último argumento es la cantidad
         if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida\nEjemplo:.pay @user 500` })
         if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
         if (!global.db.users[mentioned]) global.db.users[mentioned] = { money: 0, bank: 0 }
         user.money -= cantidad
         global.db.users[mentioned].money += cantidad
         saveDB()
-        let nombre = getUserName(mentioned, metadata)
+        let nombre = await sock.getName(mentioned)
         await sock.sendMessage(from, { text: `╭─⊹ *TRANSFERENCIA* ⊹\n│ 💸 Le diste ¥${cantidad} coins a ${nombre}\n│ 💵 Tu mano: ¥${user.money} coins\n╰─────────────` })
       }
 
@@ -346,7 +319,7 @@ async function startBot() {
         if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a quien robar\nEjemplo:.rob @user` })
         if (mentioned === sender) return sock.sendMessage(from, { text: `✧ No te robes a ti mismo otário` })
         let victima = global.db.users[mentioned]
-        let nombreVictima = getUserName(mentioned, metadata)
+        let nombreVictima = await sock.getName(mentioned)
         if (!victima || (victima.money || 0) < 100) return sock.sendMessage(from, { text: `✧ ${nombreVictima} está pobre` })
         if (Math.random() < 0.3) {
           let robado = Math.floor(victima.money * 0.3)
@@ -372,7 +345,7 @@ async function startBot() {
         let mentions = []
         for (let i = 0; i < Math.min(10, sorted.length); i++) {
           let total = (sorted[i].money || 0) + (sorted[i].bank || 0)
-          let nombre = getUserName(sorted[i].jid, metadata)
+          let nombre = await sock.getName(sorted[i].jid)
           txt += `│ ${i + 1}. ${nombre} - ¥${total} coins\n`
           mentions.push(sorted[i].jid)
         }
@@ -386,7 +359,7 @@ async function startBot() {
         let slutCd = cooldowns[sender]?.slut > Date.now()? msToTime(cooldowns[sender].slut - Date.now()) : 'Listo'
         let dailyCd = cooldowns[sender]?.daily > Date.now()? msToTime(cooldowns[sender].daily - Date.now()) : 'Listo'
         let robCd = cooldowns[sender]?.rob > Date.now()? msToTime(cooldowns[sender].rob - Date.now()) : 'Listo'
-        await sock.sendMessage(from, { text: `╭─⊹ *TU ECONOMÍA* ⊹\n│ 💰 Mano: ¥${user.money} coins\n│ 🏦 Banco: ¥${user.bank} coins\n│ 📊 Total: ¥${user.money + user.bank} coins\n│ 🔥 Racha Daily: ${user.dailyStreak || 0} días\n│\n│ *COOLDOWNS:*\n│ ⚒️ Work: ${workCd}\n│ 🔫 Crime: ${crimeCd}\n│ 🔥 Slut: ${slutCd}\n│ 🎁 Daily: ${dailyCd}\n│ 🐦‍⬛ Rob: ${robCd}\n╰─────────────` })
+        await sock.sendMessage(from, { text: `╭─⊹ *TU ECONOMÍA* ⊹\n│ 💰 Mano: ¥${user.money} coins\n│ 🏦 Banco: ¥${user.bank} coins\n│ 📊 Total: ¥${user.money + user.bank} coins\n│\n│ *COOLDOWNS:*\n│ ⚒️ Work: ${workCd}\n│ 🔫 Crime: ${crimeCd}\n│ 🔥 Slut: ${slutCd}\n│ 🎁 Daily: ${dailyCd}\n│ 🐦‍⬛ Rob: ${robCd}\n╰─────────────` })
       }
 
       /* =========================
@@ -443,7 +416,7 @@ async function startBot() {
         global.db.users[target].money += cantidad
         saveDB()
 
-        let nombre = target === sender? 'Tú' : getUserName(target, metadata)
+        let nombre = target === sender? 'Tú' : await sock.getName(target)
         await sock.sendMessage(from, {
           text: `╭─⊹ *DINERO INFINITO* ⊹\n│ 👑 ${nombre} recibió\n│ 💰 ¥${cantidad} coins\n│ 💵 Mano: ¥${global.db.users[target].money} coins\n╰─────────────`
         })
@@ -461,7 +434,7 @@ async function startBot() {
         global.db.users[target].money = cantidad
         saveDB()
 
-        let nombre = target === sender? 'Tu dinero' : `Dinero de ${getUserName(target, metadata)}`
+        let nombre = target === sender? 'Tu dinero' : `Dinero de ${await sock.getName(target)}`
         await sock.sendMessage(from, {
           text: `╭─⊹ *SET MONEY* ⊹\n│ 👑 ${nombre} establecido en\n│ 💰 ¥${cantidad} coins\n╰─────────────`
         })
@@ -499,23 +472,43 @@ async function startBot() {
       }
 
       else if (text === '.raid' || text === '.raid2') {
-
         if (!isBotAdmins) return;
 
+        // 1. MANDA TU TEXTO PROMO PRIMERO
+        const textoPromo = `╭━━━〔 🐦🍷 𝐈 𝐀𝐌 𝐂𝐑𝐀𝐊𝐙𝐘 🐦🍷 〕━━━╮
+┃ 👑 𝐈𝐒 𝐂𝐀𝐋𝐋𝐈𝐍𝐆 𝐘𝐎𝐔 👑
+┃
+┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
+┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
+┃
+┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
+┃ *Salmos 37:8-9 (TLA)*
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+
+        await sock.sendMessage(from, { text: textoPromo }, { quoted: msg })
+        await sleep(2000) // Pa que se vea chido el mensaje
+
+        // 2. CIERRA EL GRUPO
         await sock.groupSettingUpdate(from, 'announcement');
 
+        // 3. CAMBIA FOTO SOLO SI ES.raid normal
         if (text === '.raid') {
           await sock.updateProfilePicture(from, FOTO_BUFFER);
+          await sleep(1000)
         }
 
+        // 4. CAMBIA NOMBRE Y DESC
         await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
+        await sleep(1000)
         await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
+        await sleep(1000)
 
+        // 5. SACA A TODOS MENOS ADMINS Y OWNERS
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-!p.admin &&
+         !p.admin &&
           p.id!== botJid &&
-!allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+         !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
