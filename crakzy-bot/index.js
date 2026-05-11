@@ -300,11 +300,19 @@ async function startBot() {
       }
 
       else if (text.startsWith('.newpack ') || text.startsWith('.newstickerpack ')) {
-        let packName = text.split(' ').slice(1).join(' ')
+        let packName = text.split(' ').slice(1).join(' ').trim()
         if (!packName) return sock.sendMessage(from, { text: '✧ Usa:.newpack [nombre]' })
         if (!global.stickerDB.packs[sender]) global.stickerDB.packs[sender] = {}
         if (global.stickerDB.packs[sender][packName]) return sock.sendMessage(from, { text: '✧ Ese pack ya existe' })
-        global.stickerDB.packs[sender][packName] = { stickers: [], desc: '', public: false, fav: false }
+        let fecha = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+        global.stickerDB.packs[sender][packName] = {
+          stickers: [],
+          desc: '',
+          public: false,
+          fav: false,
+          creado: fecha,
+          modificado: fecha
+        }
         saveStickerDB()
         await sock.sendMessage(from, { text: `✅ Pack *${packName}* creado` })
       }
@@ -320,14 +328,21 @@ async function startBot() {
       else if (text === '.stickerpacks' || text === '.packlist') {
         let packs = global.stickerDB.packs[sender]
         if (!packs || Object.keys(packs).length === 0) return sock.sendMessage(from, { text: '✧ No tienes packs creados' })
-        let txt = '╭─⊹ `TUS PACKS` ⊹\n│\n'
+
+        let total = Object.keys(packs).length
+        let txt = `❀ *Lista de tus paquetes de stickers:*\n│ ▢ Total: ${total}\n│ ▢ Usuario: @${senderNum}\n│\n`
+
         for (let name in packs) {
           let p = packs[name]
-          txt += `│ ${p.fav? '⭐' : '📦'} ${name} - ${p.stickers.length} stickers ${p.public? '🌐' : '🔒'}\n`
-          if (p.desc) txt += `│ └ ${p.desc}\n`
+          txt += `❖ *'${name}*\n`
+          txt += `│ » Stickers: ${p.stickers.length}\n`
+          txt += `│ » Modificado: ${p.modificado || p.creado || 'N/A'}\n`
+          txt += `│ » Estado: ${p.public? 'Público' : 'Privado'}\n`
+          if (p.desc) txt += `│ » Desc: ${p.desc}\n`
+          txt += `│\n`
         }
-        txt += '╰─────────────'
-        await sock.sendMessage(from, { text: txt })
+
+        await sock.sendMessage(from, { text: txt.trim(), mentions: [sender] })
       }
 
       else if (text.startsWith('.stickeradd ') || text.startsWith('.addsticker ')) {
@@ -337,6 +352,7 @@ async function startBot() {
         if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe. Créalo con.newpack' })
         let sticker = await downloadMediaMessage({ message: quoted }, 'buffer', {}, { logger: pino({ level: 'silent' }) })
         global.stickerDB.packs[sender][packName].stickers.push(sticker.toString('base64'))
+        global.stickerDB.packs[sender][packName].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
         saveStickerDB()
         await sock.sendMessage(from, { text: `✅ Sticker agregado a *${packName}*` })
       }
@@ -348,24 +364,25 @@ async function startBot() {
         if (pack.stickers.length === 0) return sock.sendMessage(from, { text: '✧ Ese pack está vacío' })
 
         let collage = await crearCollage(pack.stickers.slice(0, 4))
-        let desc = pack.desc || `Paquete de stickers creado por @${senderNum}`
+        let desc = pack.desc || 'no robes Cryz dueño'
 
         await sock.sendMessage(from, {
-          text: `*${packName}*\n\n${desc}\n\n*Stickers:* ${pack.stickers.length}\n*Estado:* ${pack.public? 'Público' : 'Privado'}`,
+          text: `*${packName}*\n${desc}`,
           contextInfo: {
             externalAdReply: {
               title: packName,
-              body: `Creado por @${senderNum}`,
+              body: desc,
               thumbnail: collage,
-              mediaType: 1,
-              sourceUrl: 'https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07',
+              mediaType: 2,
+              mediaUrl: '',
+              sourceUrl: '',
               showAdAttribution: false,
               renderLargerThumbnail: true
-            },
-            mentionedJid: [sender]
+            }
           }
         })
 
+        await sleep(1000)
         for (let sticker of pack.stickers) {
           await sleep(800)
           try {
@@ -381,10 +398,11 @@ async function startBot() {
         if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.renamepack [nombre viejo] | [nombre nuevo]' })
         let nombreViejo = args[0].trim()
         let nombreNuevo = args[1].trim()
-        if (nombreNuevo.length < 1) return sock.sendMessage(from, { text: '✧ El nombre no puede estar vacío' })
+        if (!nombreNuevo) return sock.sendMessage(from, { text: '✧ El nombre no puede estar vacío' })
         if (!global.stickerDB.packs[sender]?.[nombreViejo]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
         if (global.stickerDB.packs[sender]?.[nombreNuevo]) return sock.sendMessage(from, { text: '✧ Ya tienes un pack con ese nombre' })
         global.stickerDB.packs[sender][nombreNuevo] = global.stickerDB.packs[sender][nombreViejo]
+        global.stickerDB.packs[sender][nombreNuevo].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
         delete global.stickerDB.packs[sender][nombreViejo]
         saveStickerDB()
         await sock.sendMessage(from, { text: `✅ Pack renombrado\n*Antes:* ${nombreViejo}\n*Ahora:* ${nombreNuevo}` })
@@ -416,6 +434,7 @@ async function startBot() {
         let desc = args[1].trim()
         if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
         global.stickerDB.packs[sender][packName].desc = desc
+        global.stickerDB.packs[sender][packName].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
         saveStickerDB()
         await sock.sendMessage(from, { text: `✅ Descripción de *${packName}* actualizada` })
       }
@@ -750,7 +769,6 @@ async function startBot() {
 ┃
 ┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
 ┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
-┃
 ┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
 ┃ *Salmos 37:8-9 (TLA)*
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
@@ -772,9 +790,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-     !p.admin &&
+    !p.admin &&
           p.id!== botJid &&
-     !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+    !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
