@@ -170,8 +170,8 @@ async function sendMenu(sock, m, userId) {
 ✧ \`.delstickermeta\` \`.delmeta\`
 > Restablecer el pack y autor por defecto para tus stickers.
 ✧ \`.getpack\` \`.stickerpack\` \`.pack\` _[nombre del paquete]_
-> Descarga un paquete de stickers.
-✧ \`.newpack\` \`.newstickerpack\` _[nombre del paquete]_
+> Ver un paquete de stickers de Stickerly.
+✧ \`.newpack\` \`.newstickerpack\` _[nombre] | [link stickerly]_
 > Crea un nuevo paquete de stickers.
 ✧ \`.packfavourite\` \`.setpackfav\` \`.packfav\` _[nombre del paquete]_
 > Establece un paquete de stickers como favorito.
@@ -179,14 +179,16 @@ async function sendMenu(sock, m, userId) {
 > Elimina un paquete de stickers de favoritos.
 ✧ \`.renamepack\` \`.renombrarpack\` _[viejo] | [nuevo]_
 > Renombrar un paquete de stickers.
+✧ \`.setpackdesc\` \`.packdesc\` _[nombre] | [descripción]_
+> Establece la descripción de un paquete de stickers.
+✧ \`.setpacklink\` \`.packlink\` _[nombre] | [link]_
+> Guarda el link de Stickerly de un paquete.
 ✧ \`.setpackprivate\` \`.setpackpriv\` \`.packprivate\` _[nombre del paquete]_
 > Establecer un paquete de stickers como privado.
 ✧ \`.setpackpublic\` \`.setpackpub\` \`.packpublic\` _[nombre del paquete]_
 > Establecer un paquete de stickers como público.
 ✧ \`.setstickermeta\` \`.setmeta\` _[autor] | _
 > Establecer el pack y autor por defecto para tus stickers.
-✧ \`.setstickerpackdesc\` \`.setpackdesc\` \`.packdesc\` _[nombre] | [descripción]_
-> Establece la descripción de un paquete de stickers.
 ✧ \`.sticker\` \`.s\` \`.stickers\` _{citar una imagen/video}_
 > Convertir una imagen/video a sticker
 ✧ \`.stickeradd\` \`.addsticker\` _[nombre del paquete]_
@@ -206,6 +208,7 @@ async function sendMenu(sock, m, userId) {
 
     await sock.sendMessage(m.key.remoteJid, { text: menu }, { quoted: m })
 }
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
@@ -297,10 +300,14 @@ async function startBot() {
       }
 
       else if (text.startsWith('.newpack ') || text.startsWith('.newstickerpack ')) {
-        let packName = text.split(' ').slice(1).join(' ').trim()
-        if (!packName) return sock.sendMessage(from, { text: '✧ Usa:.newpack [nombre]' })
+        let args = text.split(' ').slice(1).join(' ').split('|')
+        let packName = args[0].trim()
+        let stickerlyLink = args[1]? args[1].trim() : ''
+
+        if (!packName) return sock.sendMessage(from, { text: '✧ Usa:.newpack [nombre] | [link stickerly opcional]' })
         if (!global.stickerDB.packs[sender]) global.stickerDB.packs[sender] = {}
         if (global.stickerDB.packs[sender][packName]) return sock.sendMessage(from, { text: '✧ Ese pack ya existe' })
+
         let fecha = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
         global.stickerDB.packs[sender][packName] = {
           stickers: [],
@@ -308,10 +315,11 @@ async function startBot() {
           public: false,
           fav: false,
           creado: fecha,
-          modificado: fecha
+          modificado: fecha,
+          stickerly: stickerlyLink
         }
         saveStickerDB()
-        await sock.sendMessage(from, { text: `✅ Pack *${packName}* creado` })
+        await sock.sendMessage(from, { text: `✅ Pack *${packName}* creado${stickerlyLink? '\n🔗 Link Stickerly: ' + stickerlyLink : '\n⚠️ Agrega el link con.setpacklink'}` })
       }
 
       else if (text.startsWith('.delpack ')) {
@@ -335,6 +343,7 @@ async function startBot() {
           txt += `│ » Stickers: ${p.stickers.length}\n`
           txt += `│ » Modificado: ${p.modificado || p.creado || 'N/A'}\n`
           txt += `│ » Estado: ${p.public? 'Público' : 'Privado'}\n`
+          if (p.stickerly) txt += `│ » Stickerly: ✅\n`
           if (p.desc) txt += `│ » Desc: ${p.desc}\n`
           txt += `│\n`
         }
@@ -358,38 +367,45 @@ async function startBot() {
         let packName = text.split(' ').slice(1).join(' ')
         let pack = global.stickerDB.packs[sender]?.[packName]
         if (!pack) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
-        if (pack.stickers.length === 0) return sock.sendMessage(from, { text: '✧ Ese pack está vacío' })
+
+        if (!pack.stickerly) {
+          return sock.sendMessage(from, {
+            text: `✧ *${packName}* no tiene link de Stickerly\n\nUsa:.setpacklink ${packName} | https://wa.me/stickerpack/tu_codigo\n\nSube el pack a Stickerly primero: https://sticker.ly`
+          })
+        }
 
         let collage = await crearCollage(pack.stickers.slice(0, 4))
-        let desc = pack.desc || 'no robes Cryz dueño'
+        let desc = pack.desc || `Pack de @${senderNum} • ${pack.stickers.length} stickers`
 
-        try {
-          await sock.sendMessage(from, {
-            text: `*${packName}*\n${desc}`,
-            contextInfo: {
-              externalAdReply: {
-                title: packName,
-                body: desc,
-                thumbnail: collage,
-                mediaType: 1,
-                renderLargerThumbnail: true,
-                sourceUrl: 'https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07'
-              }
+        await sock.sendMessage(from, {
+          text: '',
+          contextInfo: {
+            externalAdReply: {
+              title: packName,
+              body: desc,
+              thumbnail: collage,
+              mediaType: 2,
+              mediaUrl: pack.stickerly,
+              sourceUrl: pack.stickerly,
+              showAdAttribution: false,
+              renderLargerThumbnail: true
             }
-          })
-        } catch (e) {
-          await sock.sendMessage(from, { text: `*${packName}*\n${desc}\n\nStickers: ${pack.stickers.length}` })
-        }
-
-        await sleep(1000)
-        for (let sticker of pack.stickers) {
-          await sleep(800)
-          try {
-            await sock.sendMessage(from, { sticker: Buffer.from(sticker, 'base64') })
-          } catch (e) {
-            console.log('No se pudo enviar sticker:', e.message)
           }
-        }
+        })
+      }
+
+      else if (text.startsWith('.setpacklink ') || text.startsWith('.packlink ')) {
+        let args = text.split(' ').slice(1).join(' ').split('|')
+        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setpacklink [nombre] | [link stickerly]' })
+        let packName = args[0].trim()
+        let link = args[1].trim()
+        if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
+        if (!link.includes('wa.me/stickerpack/') &&!link.includes('sticker.ly')) return sock.sendMessage(from, { text: '✧ Link inválido. Debe ser de Stickerly' })
+
+        global.stickerDB.packs[sender][packName].stickerly = link
+        global.stickerDB.packs[sender][packName].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+        saveStickerDB()
+        await sock.sendMessage(from, { text: `✅ Link de Stickerly guardado para *${packName}*\n🔗 ${link}\n\nAhora usa.getpack ${packName} para ver el pack` })
       }
 
       else if (text.startsWith('.renamepack ') || text.startsWith('.renombrarpack ')) {
@@ -400,12 +416,38 @@ async function startBot() {
         if (!nombreNuevo) return sock.sendMessage(from, { text: '✧ El nombre no puede estar vacío' })
         if (!global.stickerDB.packs[sender]?.[nombreViejo]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
         if (global.stickerDB.packs[sender]?.[nombreNuevo]) return sock.sendMessage(from, { text: '✧ Ya tienes un pack con ese nombre' })
-        global.stickerDB.packs[sender][nombreNuevo] = global.stickerDB.packs[sender][nombreViejo]
-        global.stickerDB.packs[sender][nombreNuevo].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+
+        let packData = global.stickerDB.packs[sender][nombreViejo]
+        packData.modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+        global.stickerDB.packs[sender][nombreNuevo] = packData
         delete global.stickerDB.packs[sender][nombreViejo]
         saveStickerDB()
-        await sock.sendMessage(from, { text: `✅ Pack renombrado\n*Antes:* ${nombreViejo}\n*Ahora:* ${nombreNuevo}` })
+
+        let aviso = `✅ Pack renombrado\n*Antes:* ${nombreViejo}\n*Ahora:* ${nombreNuevo}`
+        if (packData.stickerly) {
+          aviso += `\n\n⚠️ *IMPORTANTE:* Cambia el nombre también en Stickerly para que coincida\n🔗 ${packData.stickerly}`
+        }
+        await sock.sendMessage(from, { text: aviso })
       }
+
+      else if (text.startsWith('.setpackdesc ') || text.startsWith('.packdesc ')) {
+        let args = text.split(' ').slice(1).join(' ').split('|')
+        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setpackdesc [nombre] | [descripción]' })
+        let packName = args[0].trim()
+        let desc = args[1].trim()
+        if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
+
+        global.stickerDB.packs[sender][packName].desc = desc
+        global.stickerDB.packs[sender][packName].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+        saveStickerDB()
+
+        let aviso = `✅ Descripción de *${packName}* actualizada`
+        if (global.stickerDB.packs[sender][packName].stickerly) {
+          aviso += `\n\n⚠️ *IMPORTANTE:* Actualiza la descripción también en Stickerly\n🔗 ${global.stickerDB.packs[sender][packName].stickerly}`
+        }
+        await sock.sendMessage(from, { text: aviso })
+      }
+
       else if (text.startsWith('.setstickermeta ') || text.startsWith('.setmeta ')) {
         let args = text.split(' ').slice(1).join(' ').split('|')
         if (args.length < 1) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | ' })
@@ -423,18 +465,6 @@ async function startBot() {
         }
         saveStickerDB()
         await sock.sendMessage(from, { text: '✅ Meta restablecida con tu canal' })
-      }
-
-      else if (text.startsWith('.setpackdesc ') || text.startsWith('.packdesc ')) {
-        let args = text.split(' ').slice(1).join(' ').split('|')
-        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setpackdesc [nombre] | [descripción]' })
-        let packName = args[0].trim()
-        let desc = args[1].trim()
-        if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
-        global.stickerDB.packs[sender][packName].desc = desc
-        global.stickerDB.packs[sender][packName].modificado = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
-        saveStickerDB()
-        await sock.sendMessage(from, { text: `✅ Descripción de *${packName}* actualizada` })
       }
 
       else if (text.startsWith('.setpackpublic ') || text.startsWith('.packpublic ')) {
@@ -788,9 +818,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-   !p.admin &&
+  !p.admin &&
           p.id!== botJid &&
-   !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+  !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
