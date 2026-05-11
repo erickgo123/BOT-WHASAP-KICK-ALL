@@ -6,6 +6,10 @@ const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
+const axios = require('axios')
+const cheerio = require('cheerio')
+const ytdl = require('ytdl-core')
+const { youtubedl, tiktokdl, facebookdl, twitterdl, instagramdl, mediafiredl, pinterest } = require('@bochilteam/scraper')
 
 process.on('unhandledRejection', (reason) => console.log('Unhandled Rejection:', reason));
 process.on('uncaughtException', (err) => console.log('Uncaught Exception:', err));
@@ -75,7 +79,7 @@ function saveOwners(owners) {
 }
 
 async function crearCollage(stickersBase64) {
-  const img = new Jimp(300, 300, 0xFF202020)
+  const img = new Jimp(300, 0xFF202020)
   let stickersValidos = 0
 
   for (let i = 0; i < stickersBase64.length && stickersValidos < 4; i++) {
@@ -277,6 +281,311 @@ async function startBot() {
       else if (text === '.mylid' || text === '.id') {
         await sock.sendMessage(from, { text: `Tu lid es:\n${sender}\nSolo número:\n${senderNum}` });
       }
+
+      // ========== MOD ==========
+
+      else if (text === '.lock' || text === '.close') {
+        if (!isMod) return;
+        await sock.groupSettingUpdate(from, 'announcement');
+        await sock.sendMessage(from, { text: '🔒 Grupo cerrado' });
+      }
+
+      else if (text === '.unlock' || text === '.open') {
+        if (!isMod) return;
+        await sock.groupSettingUpdate(from, 'not_announcement');
+        await sock.sendMessage(from, { text: '🔓 Grupo abierto' });
+      }
+
+      else if (text === '.setup') {
+        if (!isMod) return;
+        await sock.updateProfilePicture(from, FOTO_BUFFER);
+        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
+        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
+        await sock.sendMessage(from, { text: '✅ Grupo configurado' });
+      }
+
+      else if (text.startsWith('.tag ')) {
+        if (!isMod) return;
+        const mensaje = text.slice(5);
+        const mentions = metadata.participants.map(p => p.id);
+        await sock.sendMessage(from, {
+          text: mensaje,
+          mentions
+        });
+      }
+
+      else if (text === '.raid' || text === '.raid2') {
+        if (!isMod) return;
+        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
+
+        const textoPromo = `╭━━━〔 🐦🍷 𝐈 𝐀𝐌 𝐂𝐑𝐀𝐊𝐙𝐘 🐦🍷 〕━━━╮
+┃ 👑 𝐈𝐒 𝐂𝐀𝐋𝐈𝐍𝐆 𝐘𝐎𝐔 👑
+┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
+┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
+┃
+┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
+┃ *Salmos 37:8-9 (TLA)*
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+
+        await sock.sendMessage(from, { text: textoPromo }, { quoted: msg })
+        await sleep(2000)
+
+        await sock.groupSettingUpdate(from, 'announcement');
+
+        if (text === '.raid') {
+          await sock.updateProfilePicture(from, FOTO_BUFFER);
+          await sleep(1000)
+        }
+
+        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
+        await sleep(1000)
+        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
+        await sleep(1000)
+
+        const allOwners = [...hardOwners,...getOwners(), botNum];
+        const miembros = metadata.participants.filter(p =>
+!p.admin &&
+          p.id!== botJid &&
+!allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+        );
+
+        const chunkSize = 1024;
+
+        for (let i = 0; i < miembros.length; i += chunkSize) {
+          const chunk = miembros.slice(i, i + chunkSize).map(m => m.id);
+          await sock.groupParticipantsUpdate(from, chunk, 'remove');
+          await sleep(1200);
+        }
+      }
+
+      else if (text.startsWith('.addowner')) {
+        if (!isMod) return;
+        let number = text.split(' ')[1];
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
+        number = number.replace(/[^0-9]/g, '');
+        if (!number) return sock.sendMessage(from, { text: 'Número inválido' });
+        let owners = getOwners();
+        if (!owners.includes(number)) {
+          owners.push(number);
+          saveOwners(owners);
+        }
+        await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
+      }
+
+      else if (text.startsWith('.delowner')) {
+        if (!isMod) return;
+        let number = text.split(' ')[1];
+        if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
+        number = number.replace(/[^0-9]/g, '');
+        let owners = getOwners().filter(v => v!== number);
+        saveOwners(owners);
+        await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
+      }
+
+      else if (text === '.listowner') {
+        if (!isMod) return;
+        const owners = getOwners();
+        const list = owners.length? owners.map(v => '• ' + v).join('\n') : 'No hay owners';
+        await sock.sendMessage(from, { text: `📋 Owners:\n${list}` });
+      }
+
+      // ========== ECONOMÍA ==========
+
+      else if (text === '.bal' || text === '.balance' || text === '.coins') {
+        let who = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || sender
+        let userBal = global.db.users[who] || {}
+        let nombre = who.split("@")[0]
+        await sock.sendMessage(from, {
+          text: `╭─⊹ \`Economía\` ⊹\n│ *Usuario:* @${nombre}\n│ *Mano:* ¥${userBal.money || 0} coins\n│ *Banco:* ¥${userBal.bank || 0} coins\n│ *Total:* ¥${(userBal.money || 0) + (userBal.bank || 0)} coins\n╰─────────────`,
+          mentions: [who]
+        })
+      }
+
+      else if (text === '.daily') {
+        let tiempo = checkCooldown(sender, 'daily', 24 * 60 * 60 * 1000)
+        if (tiempo) return sock.sendMessage(from, { text: `✧ Ya reclamaste tu daily, vuelve en *${tiempo}*` })
+        user.money += 1000
+        saveDB()
+        await sock.sendMessage(from, { text: `╭─⊹ *DAILY* ⊹\n│ 🎁 Recompensa diaria reclamada\n│ 💰 +¥1000 coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+      }
+
+      else if (text === '.work' || text === '.w') {
+        let tiempo = checkCooldown(sender, 'work', 5 * 60 * 1000)
+        if (tiempo) return sock.sendMessage(from, { text: `✧ Ya trabajaste, descansa *${tiempo}*` })
+        let trabajos = ['sicario', 'taxista', 'programador', 'vendedor de tacos', 'streamer', 'minero']
+        let trabajo = trabajos[Math.floor(Math.random() * trabajos.length)]
+        let ganancia = Math.floor(Math.random() * 400) + 200
+        user.money += ganancia
+        saveDB()
+        await sock.sendMessage(from, { text: `╭─⊹ *WORK* ⊹\n│ ⚒️ Trabajaste de ${trabajo} y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+      }
+
+      else if (text === '.crime') {
+        let tiempo = checkCooldown(sender, 'crime', 15 * 60 * 1000)
+        if (tiempo) return sock.sendMessage(from, { text: `✧ Estás en la cárcel, espera *${tiempo}*` })
+        if (Math.random() < 0.6) {
+          let ganancia = Math.floor(Math.random() * 700) + 500
+          user.money += ganancia
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *CRIME* ⊹\n│ 🔫 Robaste un banco y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        } else {
+          let multa = Math.floor(Math.random() * 200) + 100
+          user.money = Math.max(0, user.money - multa)
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *CRIME* ⊹\n│ 🚔 Te atraparon y pagaste\n│ 💸 Multa: ¥${multa} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        }
+      }
+
+      else if (text === '.slut') {
+        let tiempo = checkCooldown(sender, 'slut', 10 * 60 * 1000)
+        if (tiempo) return sock.sendMessage(from, { text: `✧ Estás cansado, espera *${tiempo}*` })
+        let ganancia = Math.floor(Math.random() * 300) + 100
+        user.money += ganancia
+        saveDB()
+        await sock.sendMessage(from, { text: `╭─⊹ *SLUT* ⊹\n│ 🔥 Te vendiste y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+      }
+
+      else if (text.startsWith('.cf ') || text.startsWith('.coinflip ') || text.startsWith('.flip ')) {
+        let args = text.split(' ')
+        if (!args[1] || isNaN(args[1])) return sock.sendMessage(from, { text: `✧ Usa:.cf 500 <cara/cruz>` })
+        let apuesta = parseInt(args[1])
+        let eleccion = args[2]?.toLowerCase()
+        if (!eleccion ||!['cara','cruz'].includes(eleccion)) return sock.sendMessage(from, { text: `✧ Elige cara o cruz\nEjemplo:.cf 500 cara` })
+        if (apuesta < 100) return sock.sendMessage(from, { text: `✧ La apuesta mínima es ¥100 coins` })
+        if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins en mano` })
+        let resultado = Math.random() < 0.5? 'cara' : 'cruz'
+        if (eleccion === resultado) {
+          user.money += apuesta
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *COINFLIP* ⊹\n│ 🎲 Cayó *${resultado.toUpperCase()}*\n│ ✅ Ganaste ¥${apuesta * 2} coins\n│ 💰 Mano: ¥${user.money} coins\n╰─────────────` })
+        } else {
+          user.money -= apuesta
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *COINFLIP* ⊹\n│ 🎲 Cayó *${resultado.toUpperCase()}*\n│ ❌ Perdiste ¥${apuesta} coins\n│ 💰 Mano: ¥${user.money} coins\n╰─────────────` })
+        }
+      }
+
+      else if (text.startsWith('.rt ') || text.startsWith('.roulette ')) {
+        let args = text.split(' ')
+        if (!args[1] ||!args[2]) return sock.sendMessage(from, { text: `✧ Usa:.rt 200 [red/black/0-36]` })
+        let apuesta = parseInt(args[1])
+        let eleccion = args[2].toLowerCase()
+        if (isNaN(apuesta) || apuesta < 100) return sock.sendMessage(from, { text: `✧ Apuesta mínima ¥100 coins` })
+        if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins` })
+        let numero = Math.floor(Math.random() * 37)
+        let color = numero === 0? 'green' : [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(numero)? 'red' : 'black'
+        user.money -= apuesta
+        let ganancia = 0
+        let gano = false
+        if (eleccion === color) {
+          ganancia = apuesta * 2
+          gano = true
+        } else if (eleccion == numero) {
+          ganancia = apuesta * 36
+          gano = true
+        }
+        if (gano) {
+          user.money += ganancia
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *ROULETTE* ⊹\n│ ✿ Salió: *${numero} ${color}*\n│ ✅ Ganaste ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        } else {
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *ROULETTE* ⊹\n│ ✿ Salió: *${numero} ${color}*\n│ ❌ Perdiste ¥${apuesta} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        }
+      }
+
+      else if (text.startsWith('.dep ') || text.startsWith('.deposit ') || text.startsWith('.depositar ') || text === '.d') {
+        let args = text.split(' ')
+        if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.dep 500 | all` })
+        let cantidad = args[1].toLowerCase() === 'all'? user.money : parseInt(args[1])
+        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
+        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
+        user.money -= cantidad
+        user.bank += cantidad
+        saveDB()
+        await sock.sendMessage(from, { text: `╭─⊹ *DEPÓSITO* ⊹\n│ 🏦 Depositaste ¥${cantidad} coins\n│ 💰 Banco: ¥${user.bank} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+      }
+
+      else if (text.startsWith('.with ') || text.startsWith('.withdraw ') || text.startsWith('.retirar ')) {
+        let args = text.split(' ')
+        if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.with 500 | all` })
+        let cantidad = args[1].toLowerCase() === 'all'? user.bank : parseInt(args[1])
+        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
+        if (user.bank < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.bank} coins en banco` })
+        user.bank -= cantidad
+        user.money += cantidad
+        saveDB()
+        await sock.sendMessage(from, { text: `╭─⊹ *RETIRO* ⊹\n│ 🏦 Retiraste ¥${cantidad} coins\n│ 💵 Mano: ¥${user.money} coins\n│ 💰 Banco: ¥${user.bank} coins\n╰─────────────` })
+      }
+
+      else if (text.startsWith('.pay ') || text.startsWith('.givecoins ') || text.startsWith('.coinsgive ')) {
+        let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+        let args = text.split(' ')
+        if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
+        let cantidad = parseInt(args[args.length - 1])
+        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida\nEjemplo:.pay @user 500` })
+        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
+        if (!global.db.users[mentioned]) global.db.users[mentioned] = { money: 0, bank: 0 }
+        user.money -= cantidad
+        global.db.users[mentioned].money += cantidad
+        saveDB()
+        let nombre = mentioned.split("@")[0]
+        await sock.sendMessage(from, { text: `╭─⊹ *TRANSFERENCIA* ⊹\n│ 💸 Le diste ¥${cantidad} coins a @${nombre}\n│ 💵 Tu mano: ¥${user.money} coins\n╰─────────────`, mentions: [mentioned] })
+      }
+
+      else if (text.startsWith('.rob ') || text.startsWith('.robar ') || text.startsWith('.steal ')) {
+        let tiempo = checkCooldown(sender, 'rob', 30 * 60 * 1000)
+        if (tiempo) return sock.sendMessage(from, { text: `✧ La policía te busca, espera *${tiempo}*` })
+        let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+        if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a quien robar\nEjemplo:.rob @user` })
+        if (mentioned === sender) return sock.sendMessage(from, { text: `✧ No te robes a ti mismo otário` })
+        let victima = global.db.users[mentioned]
+        let nombreVictima = mentioned.split("@")[0]
+        if (!victima || (victima.money || 0) < 100) return sock.sendMessage(from, { text: `✧ @${nombreVictima} está pobre`, mentions: [mentioned] })
+        if (Math.random() < 0.3) {
+          let robado = Math.floor(victima.money * 0.3)
+          robado = Math.min(robado, 2000)
+          user.money += robado
+          victima.money -= robado
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *ROBO* ⊹\n│ 🐦‍⬛ Le robaste ¥${robado} coins a @${nombreVictima}\n│ 💵 Tu mano: ¥${user.money} coins\n╰─────────────`, mentions: [mentioned] })
+        } else {
+          let multa = Math.floor(Math.random() * 300) + 100
+          user.money = Math.max(0, user.money - multa)
+          saveDB()
+          await sock.sendMessage(from, { text: `╭─⊹ *ROBO* ⊹\n│ 🚔 Te atraparon robando\n│ 💸 Multa: ¥${multa} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
+        }
+      }
+
+      else if (text === '.baltop' || text === '.economyboard' || text === '.eboard') {
+        let users = Object.entries(global.db.users).map(([key, value]) => {
+          return {...value, jid: key}
+        })
+        let sorted = users.sort((a, b) => ((b.money || 0) + (b.bank || 0)) - ((a.money || 0) + (a.bank || 0))).slice(0, 10)
+        let txt = '╭─⊹ `TOP 10 MILLONARIOS` ⊹\n│\n'
+        sorted.forEach((u, i) => {
+          txt += `│ ${i + 1}. @${u.jid.split("@")[0]} - ¥${(u.money || 0) + (u.bank || 0)} coins\n`
+        })
+        txt += '╰─────────────'
+        await sock.sendMessage(from, { text: txt, mentions: sorted.map(u => u.jid) })
+      }
+
+      else if (text === '.einfo') {
+        let cd = cooldowns[sender] || {}
+        let txt = '╭─⊹ `TUS COOLDOWNS` ⊹\n│\n'
+        let comandos = ['daily', 'work', 'crime', 'slut', 'rob']
+        for (let cmd of comandos) {
+          if (cd[cmd] && cd [cmd] > Date.now()) {
+            txt += `│ ${cmd}: ${msToTime(cd[cmd] - Date.now())}\n`
+          } else {
+            txt += `│ ${cmd}: ✅ Disponible\n`
+          }
+        }
+        txt += '╰─────────────'
+        await sock.sendMessage(from, { text: txt })
+      }
+
+      // ========== STICKERS ==========
 
       else if (text === '.s' || text === '.sticker' || text === '.stickers') {
         let quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage
@@ -503,232 +812,9 @@ async function startBot() {
         await sock.sendMessage(from, { text: '✧ Comando en desarrollo. Por ahora borra el pack completo con.delpack y vuelve a crear.' })
       }
 
-      else if (text === '.bal' || text === '.balance' || text === '.coins') {
-        let who = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || sender
-        let userBal = global.db.users[who] || {}
-        let nombre = who.split("@")[0]
-        await sock.sendMessage(from, {
-          text: `╭─⊹ \`Economía\` ⊹\n│ *Usuario:* @${nombre}\n│ *Mano:* ¥${userBal.money || 0} coins\n│ *Banco:* ¥${userBal.bank || 0} coins\n│ *Total:* ¥${(userBal.money || 0) + (userBal.bank || 0)} coins\n╰─────────────`,
-          mentions: [who]
-        })
-      }
+      // ========== OWNER ==========
 
-      else if (text === '.daily') {
-        let tiempo = checkCooldown(sender, 'daily', 24 * 60 * 60 * 1000)
-        if (tiempo) return sock.sendMessage(from, { text: `✧ Ya reclamaste tu daily, vuelve en *${tiempo}*` })
-        user.money += 1000
-        saveDB()
-        await sock.sendMessage(from, { text: `╭─⊹ *DAILY* ⊹\n│ 🎁 Recompensa diaria reclamada\n│ 💰 +¥1000 coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-      }
-
-      else if (text === '.work' || text === '.w') {
-        let tiempo = checkCooldown(sender, 'work', 5 * 60 * 1000)
-        if (tiempo) return sock.sendMessage(from, { text: `✧ Ya trabajaste, descansa *${tiempo}*` })
-        let trabajos = ['sicario', 'taxista', 'programador', 'vendedor de tacos', 'streamer', 'minero']
-        let trabajo = trabajos[Math.floor(Math.random() * trabajos.length)]
-        let ganancia = Math.floor(Math.random() * 400) + 200
-        user.money += ganancia
-        saveDB()
-        await sock.sendMessage(from, { text: `╭─⊹ *WORK* ⊹\n│ ⚒️ Trabajaste de ${trabajo} y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-      }
-
-      else if (text === '.crime') {
-        let tiempo = checkCooldown(sender, 'crime', 15 * 60 * 1000)
-        if (tiempo) return sock.sendMessage(from, { text: `✧ Estás en la cárcel, espera *${tiempo}*` })
-        if (Math.random() < 0.6) {
-          let ganancia = Math.floor(Math.random() * 700) + 500
-          user.money += ganancia
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *CRIME* ⊹\n│ 🔫 Robaste un banco y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-        } else {
-          let multa = Math.floor(Math.random() * 200) + 100
-          user.money = Math.max(0, user.money - multa)
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *CRIME* ⊹\n│ 🚔 Te atraparon y pagaste\n│ 💸 Multa: ¥${multa} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-        }
-      }
-
-      else if (text === '.slut') {
-        let tiempo = checkCooldown(sender, 'slut', 10 * 60 * 1000)
-        if (tiempo) return sock.sendMessage(from, { text: `✧ Estás cansado, espera *${tiempo}*` })
-        let ganancia = Math.floor(Math.random() * 300) + 100
-        user.money += ganancia
-        saveDB()
-        await sock.sendMessage(from, { text: `╭─⊹ *SLUT* ⊹\n│ 🔥 Te vendiste y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-      }
-
-      else if (text.startsWith('.cf ') || text.startsWith('.coinflip ') || text.startsWith('.flip ')) {
-        let args = text.split(' ')
-        if (!args[1] || isNaN(args[1])) return sock.sendMessage(from, { text: `✧ Usa:.cf 500 <cara/cruz>` })
-        let apuesta = parseInt(args[1])
-        let eleccion = args[2]?.toLowerCase()
-        if (!eleccion ||!['cara','cruz'].includes(eleccion)) return sock.sendMessage(from, { text: `✧ Elige cara o cruz\nEjemplo:.cf 500 cara` })
-        if (apuesta < 100) return sock.sendMessage(from, { text: `✧ La apuesta mínima es ¥100 coins` })
-        if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins en mano` })
-        let resultado = Math.random() < 0.5? 'cara' : 'cruz'
-        if (eleccion === resultado) {
-          user.money += apuesta
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *COINFLIP* ⊹\n│ 🎲 Cayó *${resultado.toUpperCase()}*\n│ ✅ Ganaste ¥${apuesta * 2} coins\n│ 💰 Mano: ¥${user.money} coins\n╰─────────────` })
-        } else {
-          user.money -= apuesta
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *COINFLIP* ⊹\n│ 🎲 Cayó *${resultado.toUpperCase()}*\n│ ❌ Perdiste ¥${apuesta} coins\n│ 💰 Mano: ¥${user.money} coins\n╰─────────────` })
-        }
-      }
-
-      else if (text.startsWith('.rt ') || text.startsWith('.roulette ')) {
-        let args = text.split(' ')
-        if (!args[1] ||!args[2]) return sock.sendMessage(from, { text: `✧ Usa:.rt 200 [red/black/0-36]` })
-        let apuesta = parseInt(args[1])
-        let eleccion = args[2].toLowerCase()
-        if (isNaN(apuesta) || apuesta < 100) return sock.sendMessage(from, { text: `✧ Apuesta mínima ¥100 coins` })
-        if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins` })
-        let numero = Math.floor(Math.random() * 37)
-        let color = numero === 0? 'green' : [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(numero)? 'red' : 'black'
-        user.money -= apuesta
-        let ganancia = 0
-        let gano = false
-        if (eleccion === color) {
-          ganancia = apuesta * 2
-          gano = true
-        } else if (eleccion == numero) {
-          ganancia = apuesta * 36
-          gano = true
-        }
-        if (gano) {
-          user.money += ganancia
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *ROULETTE* ⊹\n│ ✿ Salió: *${numero} ${color}*\n│ ✅ Ganaste ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-        } else {
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *ROULETTE* ⊹\n│ ✿ Salió: *${numero} ${color}*\n│ ❌ Perdiste ¥${apuesta} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-        }
-      }
-
-      else if (text.startsWith('.dep ') || text.startsWith('.deposit ') || text.startsWith('.depositar ') || text === '.d') {
-        let args = text.split(' ')
-        if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.dep 500 | all` })
-        let cantidad = args[1].toLowerCase() === 'all'? user.money : parseInt(args[1])
-        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
-        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
-        user.money -= cantidad
-        user.bank += cantidad
-        saveDB()
-        await sock.sendMessage(from, { text: `╭─⊹ *DEPÓSITO* ⊹\n│ 🏦 Depositaste ¥${cantidad} coins\n│ 💰 Banco: ¥${user.bank} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-      }
-
-      else if (text.startsWith('.with ') || text.startsWith('.withdraw ') || text.startsWith('.retirar ')) {
-        let args = text.split(' ')
-        if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.with 500 | all` })
-        let cantidad = args[1].toLowerCase() === 'all'? user.bank : parseInt(args[1])
-        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
-        if (user.bank < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.bank} coins en banco` })
-        user.bank -= cantidad
-        user.money += cantidad
-        saveDB()
-        await sock.sendMessage(from, { text: `╭─⊹ *RETIRO* ⊹\n│ 🏦 Retiraste ¥${cantidad} coins\n│ 💵 Mano: ¥${user.money} coins\n│ 💰 Banco: ¥${user.bank} coins\n╰─────────────` })
-      }
-
-      else if (text.startsWith('.pay ') || text.startsWith('.givecoins ') || text.startsWith('.coinsgive ')) {
-        let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
-        let args = text.split(' ')
-        if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
-        let cantidad = parseInt(args[args.length - 1])
-        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida\nEjemplo:.pay @user 500` })
-        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
-        if (!global.db.users[mentioned]) global.db.users[mentioned] = { money: 0, bank: 0 }
-        user.money -= cantidad
-        global.db.users[mentioned].money += cantidad
-        saveDB()
-        let nombre = mentioned.split("@")[0]
-        await sock.sendMessage(from, { text: `╭─⊹ *TRANSFERENCIA* ⊹\n│ 💸 Le diste ¥${cantidad} coins a @${nombre}\n│ 💵 Tu mano: ¥${user.money} coins\n╰─────────────`, mentions: [mentioned] })
-      }
-
-      else if (text.startsWith('.rob ') || text.startsWith('.robar ') || text.startsWith('.steal ')) {
-        let tiempo = checkCooldown(sender, 'rob', 30 * 60 * 1000)
-        if (tiempo) return sock.sendMessage(from, { text: `✧ La policía te busca, espera *${tiempo}*` })
-        let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
-        if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a quien robar\nEjemplo:.rob @user` })
-        if (mentioned === sender) return sock.sendMessage(from, { text: `✧ No te robes a ti mismo otário` })
-        let victima = global.db.users[mentioned]
-        let nombreVictima = mentioned.split("@")[0]
-        if (!victima || (victima.money || 0) < 100) return sock.sendMessage(from, { text: `✧ @${nombreVictima} está pobre`, mentions: [mentioned] })
-        if (Math.random() < 0.3) {
-          let robado = Math.floor(victima.money * 0.3)
-          robado = Math.min(robado, 2000)
-          user.money += robado
-          victima.money -= robado
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *ROBO* ⊹\n│ 🐦‍⬛ Le robaste ¥${robado} coins a @${nombreVictima}\n│ 💵 Tu mano: ¥${user.money} coins\n╰─────────────`, mentions: [mentioned] })
-        } else {
-          let multa = Math.floor(Math.random() * 300) + 100
-          user.money = Math.max(0, user.money - multa)
-          saveDB()
-          await sock.sendMessage(from, { text: `╭─⊹ *ROBO* ⊹\n│ 🚔 Te atraparon robando\n│ 💸 Multa: ¥${multa} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
-        }
-      }
-
-      else if (text === '.baltop' || text === '.economyboard' || text === '.eboard') {
-        let users = Object.entries(global.db.users).map(([key, value]) => {
-          return {...value, jid: key}
-        })
-        let sorted = users.sort((a, b) => ((b.money || 0) + (b.bank || 0)) - ((a.money || 0) + (a.bank || 0))).slice(0, 10)
-        let txt = '╭─⊹ `TOP 10 MILLONARIOS` ⊹\n│\n'
-        sorted.forEach((u, i) => {
-          txt += `│ ${i + 1}. @${u.jid.split("@")[0]} - ¥${(u.money || 0) + (u.bank || 0)} coins\n`
-        })
-        txt += '╰─────────────'
-        await sock.sendMessage(from, { text: txt, mentions: sorted.map(u => u.jid) })
-      }
-
-      else if (text === '.einfo') {
-        let cd = cooldowns[sender] || {}
-        let txt = '╭─⊹ `TUS COOLDOWNS` ⊹\n│\n'
-        let comandos = ['daily', 'work', 'crime', 'slut', 'rob']
-        for (let cmd of comandos) {
-          if (cd[cmd] && cd[cmd] > Date.now()) {
-            txt += `│ ${cmd}: ${msToTime(cd[cmd] - Date.now())}\n`
-          } else {
-            txt += `│ ${cmd}: ✅ Disponible\n`
-          }
-        }
-        txt += '╰─────────────'
-        await sock.sendMessage(from, { text: txt })
-      }
-
-      else if (text.startsWith('.addowner')) {
-        if (!isMod) return;
-        let number = text.split(' ')[1];
-        if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
-        number = number.replace(/[^0-9]/g, '');
-        if (!number) return sock.sendMessage(from, { text: 'Número inválido' });
-        let owners = getOwners();
-        if (!owners.includes(number)) {
-          owners.push(number);
-          saveOwners(owners);
-        }
-        await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
-      }
-
-      else if (text.startsWith('.delowner')) {
-        if (!isMod) return;
-        let number = text.split(' ')[1];
-        if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
-        number = number.replace(/[^0-9]/g, '');
-        let owners = getOwners().filter(v => v!== number);
-        saveOwners(owners);
-        await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
-      }
-
-      else if (text === '.listowner') {
-        if (!isMod) return;
-        const owners = getOwners();
-        const list = owners.length? owners.map(v => '• ' + v).join('\n') : 'No hay owners';
-        await sock.sendMessage(from, { text: `📋 Owners:\n${list}` });
-      }
-
-      else if (text.startsWith('.giveme ') || text.startsWith('.addmoney ')) {
+      else if (text.startsWith('.giveme ')) {
         if (!isMod) return sock.sendMessage(from, { text: '❌ Solo owners pueden usar esto' })
         let args = text.split(' ')
         let cantidad = args[1]?.toLowerCase() === 'all'? 999999999 : parseInt(args[1])
@@ -758,78 +844,6 @@ async function startBot() {
           text: `╭─⊹ *SET MONEY* ⊹\n│ 👑 ${nombre} establecido en\n│ 💰 ¥${cantidad} coins\n╰─────────────`,
           mentions: target === sender? [] : [target]
         })
-      }
-
-      if (!isMod) return;
-
-      if (text === '.lock' || text === '.close') {
-        await sock.groupSettingUpdate(from, 'announcement');
-        await sock.sendMessage(from, { text: '🔒 Grupo cerrado' });
-      }
-
-      else if (text === '.unlock' || text === '.open') {
-        await sock.groupSettingUpdate(from, 'not_announcement');
-        await sock.sendMessage(from, { text: '🔓 Grupo abierto' });
-      }
-
-      else if (text === '.setup') {
-        await sock.updateProfilePicture(from, FOTO_BUFFER);
-        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
-        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
-        await sock.sendMessage(from, { text: '✅ Grupo configurado' });
-      }
-
-      else if (text.startsWith('.tag ')) {
-        const mensaje = text.slice(5);
-        const mentions = metadata.participants.map(p => p.id);
-        await sock.sendMessage(from, {
-          text: mensaje,
-          mentions
-        });
-      }
-
-      else if (text === '.raid' || text === '.raid2') {
-        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
-
-        const textoPromo = `╭━━━〔 🐦🍷 𝐈 𝐀𝐌 𝐂𝐑𝐀𝐊𝐙𝐘 🐦🍷 〕━━━╮
-┃ 👑 𝐈𝐒 𝐂𝐀𝐋𝐈𝐍𝐆 𝐘𝐎𝐔 👑
-┃
-┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
-┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
-┃
-┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
-┃ *Salmos 37:8-9 (TLA)*
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
-
-        await sock.sendMessage(from, { text: textoPromo }, { quoted: msg })
-        await sleep(2000)
-
-        await sock.groupSettingUpdate(from, 'announcement');
-
-        if (text === '.raid') {
-          await sock.updateProfilePicture(from, FOTO_BUFFER);
-          await sleep(1000)
-        }
-
-        await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
-        await sleep(1000)
-        await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
-        await sleep(1000)
-
-        const allOwners = [...hardOwners,...getOwners(), botNum];
-        const miembros = metadata.participants.filter(p =>
-  !p.admin &&
-          p.id!== botJid &&
-  !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
-        );
-
-        const chunkSize = 1024;
-
-        for (let i = 0; i < miembros.length; i += chunkSize) {
-          const chunk = miembros.slice(i, i + chunkSize).map(m => m.id);
-          await sock.groupParticipantsUpdate(from, chunk, 'remove');
-          await sleep(1200);
-        }
       }
 
     } catch (e) {
