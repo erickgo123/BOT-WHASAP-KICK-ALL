@@ -74,6 +74,111 @@ function saveOwners(owners) {
   fs.writeFileSync('./config.json', JSON.stringify({ owner: cleanOwners }, null, 2));
 }
 
+async function sendMenu(sock, m, userId) {
+    const menu = `𝐇𝐨𝐥𝐚! 𝐒𝐨𝐲 𝐂𝐫𝐚𝐤𝐳𝐲 𝐛𝐨𝐭
+ᴀǫᴜɪ ᴛɪᴇɴᴇs ʟᴀ ʟɪsᴛᴀ ᴅᴇ ᴄᴏᴍᴀɴᴅᴏs
+╭┈ ↷
+│ ✐ ꒷ꕤ💎ദ ᴄᴀɴᴀʟ ᴏғɪᴄɪᴀʟ ෴
+│ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
+╰─────────────────
+
+» ˚୨•(=^●ω●^=)• ⊹ \`MOD\` ⊹
+> ✐ Comandos de *Moderación* para administrar grupos.
+
+✧ \`.lock\` \`.close\`
+> Cierra el grupo.
+✧ \`.unlock\` \`.open\`
+> Abre el grupo.
+✧ \`.setup\`
+> Cambia foto/nombre/desc del grupo.
+✧ \`.tag\` _[msg]_
+> Menciona a todos los miembros.
+✧ \`.mylid\`
+> Ver tu ID de WhatsApp.
+✧ \`.follar\`
+> Raid + kick all + renombrar grupo.
+✧ \`.follar2\`
+> Raid sin cambiar foto.
+✧ \`.addowner\` _521xxx_
+> Agrega un owner al bot.
+✧ \`.delowner\` _521xxx_
+> Quita un owner del bot.
+✧ \`.listowner\`
+> Lista de owners actuales.
+
+» ˚୨•(=^●ω●^=)• ⊹ \`Economía\` ⊹
+> ✐ Comandos de *Economía* para ganar dinero y divertirte con tus amigos.
+
+✧ \`.balance\` \`.bal\` \`.coins\` _<usuario>_
+> Ver cuantos coins tienes.
+✧ \`.coinflip\` \`.flip\` \`.cf\` _[cantidad] <cara/cruz>_
+> Apostar coins en un cara o cruz.
+✧ \`.crime\`
+> Ganar coins rapido.
+✧ \`.daily\`
+> Reclamar tu recompensa diaria.
+✧ \`.deposit\` \`.dep\` \`.depositar\` \`.d\` _[cantidad] | all_
+> Depositar tus coins en el banco.
+✧ \`.economyboard\` \`.eboard\` \`.baltop\` _<pagina>_
+> Ver el ranking de usuarios con más coins.
+✧ \`.economyinfo\` \`.einfo\`
+> Ver tu información de economía en el grupo.
+✧ \`.givecoins\` \`.pay\` \`.coinsgive\` _[usuario] [cantidad]_
+> Dar coins a un usuario.
+✧ \`.roulette\` \`.rt\` _[red/black] [cantidad]_
+> Apostar coins en una ruleta.
+✧ \`.slut\`
+> Ganar coins prostituyéndote.
+✧ \`.steal\` \`.robar\` \`.rob\` _[@mencion]_
+> Intentar robar coins a un usuario.
+✧ \`.withdraw\` \`.with\` \`.retirar\` _[cantidad] | all_
+> Retirar tus coins en el banco.
+✧ \`.work\` \`.w\`
+> Ganar coins trabajando.
+
+» ˚୨•(=^●ω●^=)• ⊹ \`Stickers\` ⊹
+> ✐ Comandos de *Stickers* para crear y gestionar stickers.
+
+✧ \`.delpack\` _[nombre del paquete]_
+> Elimina un paquete de stickers.
+✧ \`.delstickermeta\` \`.delmeta\`
+> Restablecer el pack y autor por defecto para tus stickers.
+✧ \`.getpack\` \`.stickerpack\` \`.pack\` _[nombre del paquete]_
+> Descarga un paquete de stickers.
+✧ \`.newpack\` \`.newstickerpack\` _[nombre del paquete]_
+> Crea un nuevo paquete de stickers.
+✧ \`.packfavourite\` \`.setpackfav\` \`.packfav\` _[nombre del paquete]_
+> Establece un paquete de stickers como favorito.
+✧ \`.packunfavourite\` \`.unsetpackfav\` \`.packunfav\` _[nombre del paquete]_
+> Elimina un paquete de stickers de favoritos.
+✧ \`.setpackprivate\` \`.setpackpriv\` \`.packprivate\` _[nombre del paquete]_
+> Establecer un paquete de stickers como privado.
+✧ \`.setpackpublic\` \`.setpackpub\` \`.packpublic\` _[nombre del paquete]_
+> Establecer un paquete de stickers como público.
+✧ \`.setstickermeta\` \`.setmeta\` _[autor] | [pack]_
+> Establecer el pack y autor por defecto para tus stickers.
+✧ \`.setstickerpackdesc\` \`.setpackdesc\` \`.packdesc\` _[nombre] | [descripción]_
+> Establece la descripción de un paquete de stickers.
+✧ \`.sticker\` \`.s\` \`.stickers\` _{citar una imagen/video}_
+> Convertir una imagen/video a sticker
+✧ \`.stickeradd\` \`.addsticker\` _[nombre del paquete]_
+> Agrega un sticker a un paquete de stickers.
+✧ \`.stickerdel\` \`.delsticker\` _[nombre del paquete]_
+> Elimina un sticker de un paquete de stickers.
+✧ \`.stickerpacks\` \`.packlist\`
+> Lista de tus paquetes de stickers.
+
+» ˚୨•(=^●ω●^=)• ⊹ \`OWNER\` ⊹
+> ✐ Comandos *exclusivos* para owners del bot.
+
+✧ \`.giveme\` _999999_
+> Darte dinero infinito.
+✧ \`.setmoney\` _999999_
+> Setear dinero exacto.`
+
+    await sock.sendMessage(m.key.remoteJid, { text: menu }, { quoted: m })
+}
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
@@ -127,86 +232,17 @@ async function startBot() {
       user.money = user.money || 0
       user.bank = user.bank || 0
 
-      if (!global.stickerDB.meta[sender]) global.stickerDB.meta[sender] = { autor: 'crakzy bot', pack: 'Stickers' }
+      // META POR DEFECTO CON TU CANAL
+      if (!global.stickerDB.meta[sender]) global.stickerDB.meta[sender] = { 
+        autor: 'Crakzy Bot', 
+        pack: 'Crakzy Bot (https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07)' 
+      }
 
       const hardOwners = [BOT_NUMERO, BOT_OWNER, BOT_OWNER_LID, BOT_OWNER_2, BOT_OWNER_LID_2, BOT_OWNER_3, BOT_OWNER_LID_3];
       const isMod = hardOwners.includes(senderNum) || getOwners().includes(senderNum) || senderNum === botNum;
 
       if (text === '.menu') {
-        let prefix = '.'
-        await sock.sendMessage(from, {
-          text: `𝐇𝐨𝐥𝐚! 𝐒𝐨𝐲 crakzy bot
-ᴀǫᴜɪ ᴛɪᴇɴᴇs ʟᴀ ʟɪsᴛᴀ ᴅᴇ ᴄᴏᴍᴀɴᴅᴏs
-╭┈ ↷
-│ ✐ ꒷ꕤ💎ദ ᴄᴏᴍᴀɴᴅᴏs ෴
-│ ${prefix}menu
-│ ✐ ꒷ꕤ💎ദ ᴄᴀɴᴀʟ ᴏғɪᴄɪᴀʟ ෴
-│ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
-╰─────────────────
-
-» ˚୨•(=^●ω●^=)• ⊹ \`MOD\` ⊹
-│ •.lock - Cierra el grupo
-│ •.unlock - Abre el grupo
-│ •.setup - Cambia foto/nombre/desc
-│ •.tag [msg] - Menciona a todos
-│ •.mylid - Ver tu ID de WhatsApp
-│ •.follar - Raid + kick + rename
-│ •.follar2 - Raid sin cambiar foto
-│ •.addowner 521xxx - Agrega owner
-│ •.delowner 521xxx - Quita owner
-│ •.listowner - Lista de owners
-
-» ˚୨•(=^●ω●^=)• ⊹ \`ECONOMÍA\` ⊹
-│ •.bal - Ver tu dinero
-│ •.daily - Recompensa diaria 1k
-│ •.work - Trabaja cada 5min
-│ •.crime - Roba bancos 15min
-│ •.slut - Véndete cada 10min
-│ •.rob @user - Roba a alguien
-│ •.cf 500 cara - Coinflip
-│ •.rt 200 red - Ruleta casino
-│ •.dep 500 - Depositar al banco
-│ •.with 500 - Retirar del banco
-│ •.pay @user 500 - Transferir
-│ •.baltop - Top 10 millonarios
-│ •.einfo - Ver tus cooldowns
-
-» ˚୨•(=^●ω●^=)• ⊹ \`Stickers\` ⊹
-> ✐ Comandos de *Stickers* para crear y gestionar stickers.
-
-✧ \`${prefix}delpack\` _[nombre del paquete]_
-> Elimina un paquete de stickers.
-✧ \`${prefix}delstickermeta\` \`${prefix}delmeta\`
-> Restablecer el pack y autor por defecto para tus stickers.
-✧ \`${prefix}getpack\` \`${prefix}stickerpack\` \`${prefix}pack\` _[nombre del paquete]_
-> Descarga un paquete de stickers.
-✧ \`${prefix}newpack\` \`${prefix}newstickerpack\` _[nombre del paquete]_
-> Crea un nuevo paquete de stickers.
-✧ \`${prefix}packfavourite\` \`${prefix}setpackfav\` \`${prefix}packfav\` _[nombre del paquete]_
-> Establece un paquete de stickers como favorito.
-✧ \`${prefix}packunfavourite\` \`${prefix}unsetpackfav\` \`${prefix}packunfav\` _[nombre del paquete]_
-> Elimina un paquete de stickers de favoritos.
-✧ \`${prefix}setpackprivate\` \`${prefix}setpackpriv\` \`${prefix}packprivate\` _[nombre del paquete]_
-> Establecer un paquete de stickers como privado.
-✧ \`${prefix}setpackpublic\` \`${prefix}setpackpub\` \`${prefix}packpublic\` _[nombre del paquete]_
-> Establecer un paquete de stickers como público.
-✧ \`${prefix}setstickermeta\` \`${prefix}setmeta\` _[autor] | _
-> Establecer el pack y autor por defecto para tus stickers.
-✧ \`${prefix}setstickerpackdesc\` \`${prefix}setpackdesc\` \`${prefix}packdesc\` _[nombre] | [descripción]_
-> Establece la descripción de un paquete de stickers.
-✧ \`${prefix}sticker\` \`${prefix}s\` \`${prefix}stickers\` _{citar una imagen/video}_
-> Convertir una imagen/video a sticker
-✧ \`${prefix}stickeradd\` \`${prefix}addsticker\` _[nombre del paquete]_
-> Agrega un sticker a un paquete de stickers.
-✧ \`${prefix}stickerdel\` \`${prefix}delsticker\` _[nombre del paquete]_
-> Elimina un sticker de un paquete de stickers.
-✧ \`${prefix}stickerpacks\` \`${prefix}packlist\`
-> Lista de tus paquetes de stickers.
-
-» ˚୨•(=^●ω●^=)• ⊹ \`OWNER\` ⊹
-│ •.giveme 999999 - Dar dinero
-│ •.setmoney 999999 - Setear dinero`
-        });
+        await sendMenu(sock, msg, sender)
       }
 
       else if (text === '.mylid' || text === '.id') {
@@ -290,21 +326,26 @@ async function startBot() {
 
       else if (text.startsWith('.setstickermeta ') || text.startsWith('.setmeta ')) {
         let args = text.split(' ').slice(1).join(' ').split('|')
-        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | ' })
-        global.stickerDB.meta[sender] = { autor: args[0].trim(), pack: args[1].trim() }
+        if (args.length < 1) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | [pack con link]' })
+        let autor = args[0].trim()
+        let pack = args[1]? args[1].trim() : 'Crakzy Bot (https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07)'
+        global.stickerDB.meta[sender] = { autor: autor, pack: pack }
         saveStickerDB()
-        await sock.sendMessage(from, { text: `✅ Meta actualizada\nAutor: ${args[0].trim()}\nPack: ${args[1].trim()}` })
+        await sock.sendMessage(from, { text: `✅ Meta actualizada\nAutor: ${autor}\nPack: ${pack}` })
       }
 
       else if (text === '.delstickermeta' || text === '.delmeta') {
-        global.stickerDB.meta[sender] = { autor: 'crakzy bot', pack: 'Stickers' }
+        global.stickerDB.meta[sender] = { 
+          autor: 'Crakzy Bot', 
+          pack: 'Crakzy Bot (https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07)' 
+        }
         saveStickerDB()
-        await sock.sendMessage(from, { text: '✅ Meta restablecida por defecto' })
+        await sock.sendMessage(from, { text: '✅ Meta restablecida con tu canal' })
       }
 
       else if (text.startsWith('.setpackdesc ') || text.startsWith('.packdesc ')) {
         let args = text.split(' ').slice(1).join(' ').split('|')
-        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setpackdesc | [descripción]' })
+        if (args.length < 2) return sock.sendMessage(from, { text: '✧ Usa:.setpackdesc [nombre] | [descripción]' })
         let packName = args[0].trim()
         if (!global.stickerDB.packs[sender]?.[packName]) return sock.sendMessage(from, { text: '✧ Ese pack no existe' })
         global.stickerDB.packs[sender][packName].desc = args[1].trim()
@@ -402,7 +443,7 @@ async function startBot() {
         await sock.sendMessage(from, { text: `╭─⊹ *SLUT* ⊹\n│ 🔥 Te vendiste y ganaste\n│ 💰 ¥${ganancia} coins\n│ 💵 Mano: ¥${user.money} coins\n╰─────────────` })
       }
 
-      else if (text.startsWith('.cf ') || text.startsWith('.coinflip ')) {
+      else if (text.startsWith('.cf ') || text.startsWith('.coinflip ') || text.startsWith('.flip ')) {
         let args = text.split(' ')
         if (!args[1] || isNaN(args[1])) return sock.sendMessage(from, { text: `✧ Usa:.cf 500 <cara/cruz>` })
         let apuesta = parseInt(args[1])
@@ -451,7 +492,7 @@ async function startBot() {
         }
       }
 
-      else if (text.startsWith('.dep ') || text.startsWith('.deposit ') || text === '.d') {
+      else if (text.startsWith('.dep ') || text.startsWith('.deposit ') || text.startsWith('.depositar ') || text === '.d') {
         let args = text.split(' ')
         if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.dep 500 | all` })
         let cantidad = args[1].toLowerCase() === 'all'? user.money : parseInt(args[1])
@@ -475,13 +516,13 @@ async function startBot() {
         await sock.sendMessage(from, { text: `╭─⊹ *RETIRO* ⊹\n│ 🏦 Retiraste ¥${cantidad} coins\n│ 💵 Mano: ¥${user.money} coins\n│ 💰 Banco: ¥${user.bank} coins\n╰─────────────` })
       }
 
-      else if (text.startsWith('.pay ') || text.startsWith('.givecoins ')) {
+      else if (text.startsWith('.pay ') || text.startsWith('.givecoins ') || text.startsWith('.coinsgive ')) {
         let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
         let args = text.split(' ')
         if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
         let cantidad = parseInt(args[args.length - 1])
         if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida\nEjemplo:.pay @user 500` })
-        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
+                if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
         if (!global.db.users[mentioned]) global.db.users[mentioned] = { money: 0, bank: 0 }
         user.money -= cantidad
         global.db.users[mentioned].money += cantidad
@@ -514,7 +555,7 @@ async function startBot() {
         }
       }
 
-            else if (text === '.baltop' || text === '.economyboard' || text === '.eboard') {
+      else if (text === '.baltop' || text === '.economyboard' || text === '.eboard') {
         let users = Object.entries(global.db.users).map(([key, value]) => {
           return {...value, jid: key}
         })
@@ -544,32 +585,25 @@ async function startBot() {
 
       else if (text.startsWith('.addowner')) {
         if (!isMod) return;
-
         let number = text.split(' ')[1];
         if (!number) return sock.sendMessage(from, { text: 'Uso:.addowner 521xxx' });
-
         number = number.replace(/[^0-9]/g, '');
         if (!number) return sock.sendMessage(from, { text: 'Número inválido' });
-
         let owners = getOwners();
         if (!owners.includes(number)) {
           owners.push(number);
           saveOwners(owners);
         }
-
         await sock.sendMessage(from, { text: `✔ Owner agregado: ${number}` });
       }
 
       else if (text.startsWith('.delowner')) {
         if (!isMod) return;
-
         let number = text.split(' ')[1];
         if (!number) return sock.sendMessage(from, { text: 'Uso:.delowner 521xxx' });
-
         number = number.replace(/[^0-9]/g, '');
         let owners = getOwners().filter(v => v!== number);
         saveOwners(owners);
-
         await sock.sendMessage(from, { text: `✔ Owner eliminado: ${number}` });
       }
 
@@ -585,13 +619,10 @@ async function startBot() {
         let args = text.split(' ')
         let cantidad = args[1]?.toLowerCase() === 'all'? 999999999 : parseInt(args[1])
         if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Usa:.giveme 999999999 |.giveme all` })
-
         let target = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || sender
         if (!global.db.users[target]) global.db.users[target] = { money: 0, bank: 0 }
-
         global.db.users[target].money += cantidad
         saveDB()
-
         let nombre = target === sender? 'Tú' : "@" + target.split("@")[0]
         await sock.sendMessage(from, {
           text: `╭─⊹ *DINERO INFINITO* ⊹\n│ 👑 ${nombre} recibió\n│ 💰 ¥${cantidad} coins\n│ 💵 Mano: ¥${global.db.users[target].money} coins\n╰─────────────`,
@@ -604,13 +635,10 @@ async function startBot() {
         let args = text.split(' ')
         let cantidad = parseInt(args[1])
         if (isNaN(cantidad) || cantidad < 0) return sock.sendMessage(from, { text: `✧ Usa:.setmoney 999999999` })
-
         let target = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || sender
         if (!global.db.users[target]) global.db.users[target] = { money: 0, bank: 0 }
-
         global.db.users[target].money = cantidad
         saveDB()
-
         let nombre = target === sender? 'Tu dinero' : `Dinero de @${target.split("@")[0]}`
         await sock.sendMessage(from, {
           text: `╭─⊹ *SET MONEY* ⊹\n│ 👑 ${nombre} establecido en\n│ 💰 ¥${cantidad} coins\n╰─────────────`,
@@ -621,24 +649,26 @@ async function startBot() {
       // ========== COMANDOS MOD ==========
       if (!isMod) return;
 
-      if (text === '.lock') {
+      if (text === '.lock' || text === '.close') {
         await sock.groupSettingUpdate(from, 'announcement');
+        await sock.sendMessage(from, { text: '🔒 Grupo cerrado' });
       }
 
-      else if (text === '.unlock') {
+      else if (text === '.unlock' || text === '.open') {
         await sock.groupSettingUpdate(from, 'not_announcement');
+        await sock.sendMessage(from, { text: '🔓 Grupo abierto' });
       }
 
       else if (text === '.setup') {
         await sock.updateProfilePicture(from, FOTO_BUFFER);
         await sock.groupUpdateSubject(from, NOMBRE_GRUPO);
         await sock.groupUpdateDescription(from, DESCRIPCION_GRUPO);
+        await sock.sendMessage(from, { text: '✅ Grupo configurado' });
       }
 
       else if (text.startsWith('.tag ')) {
         const mensaje = text.slice(5);
         const mentions = metadata.participants.map(p => p.id);
-
         await sock.sendMessage(from, {
           text: mensaje,
           mentions
@@ -646,7 +676,7 @@ async function startBot() {
       }
 
       else if (text === '.raid' || text === '.raid2') {
-        if (!isBotAdmins) return;
+        if (!isBotAdmins) return sock.sendMessage(from, { text: '❌ Necesito ser admin' });
 
         const textoPromo = `╭━━━〔 🐦🍷 𝐈 𝐀𝐌 𝐂𝐑𝐀𝐊𝐙𝐘 🐦🍷 〕━━━╮
 ┃ 👑 𝐈𝐒 𝐂𝐀𝐋𝐈𝐍𝐆 𝐘𝐎𝐔 👑
@@ -675,9 +705,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-    !p.admin &&
+         !p.admin &&
           p.id!== botJid &&
-    !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+         !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
