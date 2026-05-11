@@ -75,7 +75,7 @@ function saveOwners(owners) {
 }
 
 async function crearCollage(stickersBase64) {
-  const img = new Jimp(300, 300, 0x00000000)
+  const img = new Jimp(300, 300, 0xFF202020) // Fondo gris oscuro en vez de transparente
   let stickersValidos = 0
 
   for (let i = 0; i < stickersBase64.length && stickersValidos < 4; i++) {
@@ -88,14 +88,13 @@ async function crearCollage(stickersBase64) {
       img.composite(sticker, x, y)
       stickersValidos++
     } catch (e) {
-      console.log('Sticker saltado, no es compatible:', e.message)
+      console.log('Sticker saltado:', e.message)
     }
   }
 
-  // Si no cargó ninguno, crea fondo negro con texto
   if (stickersValidos === 0) {
     const font = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE)
-    img.print(font, 50, 130, 'STICKERS')
+    img.print(font, 100, 130, 'PACK VACIO')
   }
 
   return await img.getBufferAsync(Jimp.MIME_JPEG)
@@ -366,6 +365,15 @@ async function startBot() {
             mentionedJid: [sender]
           }
         })
+
+        for (let sticker of pack.stickers) {
+          await sleep(800)
+          try {
+            await sock.sendMessage(from, { sticker: Buffer.from(sticker, 'base64') })
+          } catch (e) {
+            console.log('No se pudo enviar sticker:', e.message)
+          }
+        }
       }
 
       else if (text.startsWith('.renamepack ') || text.startsWith('.renombrarpack ')) {
@@ -567,7 +575,7 @@ async function startBot() {
         let args = text.split(' ')
         if (!args[1]) return sock.sendMessage(from, { text: `✧ Usa:.with 500 | all` })
         let cantidad = args[1].toLowerCase() === 'all'? user.bank : parseInt(args[1])
-        if (isNaN(cantidad)  || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
+        if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida` })
         if (user.bank < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.bank} coins en banco` })
         user.bank -= cantidad
         user.money += cantidad
@@ -764,9 +772,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-      !p.admin &&
+     !p.admin &&
           p.id!== botJid &&
-      !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+     !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
