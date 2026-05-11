@@ -71,21 +71,33 @@ function getOwners() {
 
 function saveOwners(owners) {
   const cleanOwners = [...new Set(owners.map(o => o.replace(/[^0-9]/g, '')))];
-  fs.writeFileSync('./config.json', JSON.stringify({ owner: cleanOwners }, null, 2));
+   fs.writeFileSync('./owners.json', JSON.stringify(cleanOwners, null, 2));
 }
 
 async function crearCollage(stickersBase64) {
   const img = new Jimp(300, 300, 0x00000000)
-  for (let i = 0; i < stickersBase64.length && i < 4; i++) {
+  let stickersValidos = 0
+
+  for (let i = 0; i < stickersBase64.length && stickersValidos < 4; i++) {
     try {
       let buffer = Buffer.from(stickersBase64[i], 'base64')
       let sticker = await Jimp.read(buffer)
       sticker.resize(140, 140)
-      let x = (i % 2) * 150 + 5
-      let y = Math.floor(i / 2) * 150 + 5
+      let x = (stickersValidos % 2) * 150 + 5
+      let y = Math.floor(stickersValidos / 2) * 150 + 5
       img.composite(sticker, x, y)
-    } catch (e) { console.log('Error sticker:', e) }
+      stickersValidos++
+    } catch (e) {
+      console.log('Sticker saltado, no es compatible:', e.message)
+    }
   }
+
+  // Si no cargó ninguno, crea fondo negro con texto
+  if (stickersValidos === 0) {
+    const font = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE)
+    img.print(font, 50, 130, 'STICKERS')
+  }
+
   return await img.getBufferAsync(Jimp.MIME_JPEG)
 }
 
