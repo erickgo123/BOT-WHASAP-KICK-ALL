@@ -74,6 +74,7 @@ function saveOwners(owners) {
   fs.writeFileSync('./config.json', JSON.stringify({ owner: cleanOwners }, null, 2));
 }
 
+// AQUÍ ESTÁ TU MENÚ NUEVO CON LA DECORACIÓN QUE PEDISTE
 async function sendMenu(sock, m, userId) {
     const menu = `𝐇𝐨𝐥𝐚! 𝐒𝐨𝐲 𝐂𝐫𝐚𝐤𝐳𝐲 𝐛𝐨𝐭
 ᴀǫᴜɪ ᴛɪᴇɴᴇs ʟᴀ ʟɪsᴛᴀ ᴅᴇ ᴄᴏᴍᴀɴᴅᴏs
@@ -155,7 +156,7 @@ async function sendMenu(sock, m, userId) {
 > Establecer un paquete de stickers como privado.
 ✧ \`.setpackpublic\` \`.setpackpub\` \`.packpublic\` _[nombre del paquete]_
 > Establecer un paquete de stickers como público.
-✧ \`.setstickermeta\` \`.setmeta\` _[autor] | [pack]_
+✧ \`.setstickermeta\` \`.setmeta\` _[autor] | _
 > Establecer el pack y autor por defecto para tus stickers.
 ✧ \`.setstickerpackdesc\` \`.setpackdesc\` \`.packdesc\` _[nombre] | [descripción]_
 > Establece la descripción de un paquete de stickers.
@@ -232,7 +233,6 @@ async function startBot() {
       user.money = user.money || 0
       user.bank = user.bank || 0
 
-      // META POR DEFECTO CON TU CANAL
       if (!global.stickerDB.meta[sender]) global.stickerDB.meta[sender] = { 
         autor: 'Crakzy Bot', 
         pack: 'Crakzy Bot (https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07)' 
@@ -241,6 +241,7 @@ async function startBot() {
       const hardOwners = [BOT_NUMERO, BOT_OWNER, BOT_OWNER_LID, BOT_OWNER_2, BOT_OWNER_LID_2, BOT_OWNER_3, BOT_OWNER_LID_3];
       const isMod = hardOwners.includes(senderNum) || getOwners().includes(senderNum) || senderNum === botNum;
 
+      // AQUÍ YA ESTÁ ARREGLADO - USA LA FUNCIÓN sendMenu
       if (text === '.menu') {
         await sendMenu(sock, msg, sender)
       }
@@ -326,7 +327,7 @@ async function startBot() {
 
       else if (text.startsWith('.setstickermeta ') || text.startsWith('.setmeta ')) {
         let args = text.split(' ').slice(1).join(' ').split('|')
-        if (args.length < 1) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | [pack con link]' })
+        if (args.length < 1) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | [pack]' })
         let autor = args[0].trim()
         let pack = args[1]? args[1].trim() : 'Crakzy Bot (https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07)'
         global.stickerDB.meta[sender] = { autor: autor, pack: pack }
@@ -519,10 +520,10 @@ async function startBot() {
       else if (text.startsWith('.pay ') || text.startsWith('.givecoins ') || text.startsWith('.coinsgive ')) {
         let mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
         let args = text.split(' ')
-        if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
+                if (!mentioned) return sock.sendMessage(from, { text: `✧ Menciona a alguien\nEjemplo:.pay @user 500` })
         let cantidad = parseInt(args[args.length - 1])
         if (isNaN(cantidad) || cantidad < 1) return sock.sendMessage(from, { text: `✧ Cantidad inválida\nEjemplo:.pay @user 500` })
-                if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
+        if (user.money < cantidad) return sock.sendMessage(from, { text: `✧ Solo tienes ¥${user.money} coins` })
         if (!global.db.users[mentioned]) global.db.users[mentioned] = { money: 0, bank: 0 }
         user.money -= cantidad
         global.db.users[mentioned].money += cantidad
@@ -705,9 +706,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-         !p.admin &&
+        !p.admin &&
           p.id!== botJid &&
-         !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+        !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
@@ -726,3 +727,4 @@ async function startBot() {
 }
 
 startBot();
+
