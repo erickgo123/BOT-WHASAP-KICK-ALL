@@ -31,7 +31,7 @@ let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
     case 'balance': case 'bal': case 'coins': {
       let who = m.mentionedJid[0]? m.mentionedJid[0] : m.sender
       let userBal = global.db.data.users[who] || {}
-      let nombre = await conn.getName(who)
+      let nombre = conn.contacts?.[who]?.name || conn.contacts?.[who]?.notify || who.split("@")[0]
       m.reply(`╭─⊹ \`Economía\` ⊹\n│ *Usuario:* ${nombre}\n│ *Mano:* ¥${userBal.money || 0} coins\n│ *Banco:* ¥${userBal.bank || 0} coins\n│ *Total:* ¥${(userBal.money || 0) + (userBal.bank || 0)} coins\n╰─────────────`)
     } break
 
