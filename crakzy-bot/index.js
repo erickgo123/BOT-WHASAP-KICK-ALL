@@ -7,7 +7,6 @@ const fs = require('fs');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios')
-const cheerio = require('cheerio')
 const ytdl = require('ytdl-core')
 const { youtubedl, tiktokdl, facebookdl, twitterdl, instagramdl, mediafiredl, pinterest } = require('@bochilteam/scraper')
 
@@ -79,7 +78,7 @@ function saveOwners(owners) {
 }
 
 async function crearCollage(stickersBase64) {
-  const img = new Jimp(300, 0xFF202020)
+  const img = new Jimp(300, 300, 0xFF202020)
   let stickersValidos = 0
 
   for (let i = 0; i < stickersBase64.length && stickersValidos < 4; i++) {
@@ -105,6 +104,12 @@ async function crearCollage(stickersBase64) {
 }
 
 async function sendMenu(sock, m, userId) {
+    const fecha = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    const user = global.db.users[userId] || {}
+    const totalUsers = Object.keys(global.db.users).length
+    const uptime = process.uptime() * 1000
+    const tiempo = msToTime(uptime)
+
     const menu = `𝐇𝐨𝐥𝐚! 𝐒𝐨𝐲 𝐂𝐫𝐚𝐤𝐳𝐲 𝐛𝐨𝐭
 ᴀǫᴜɪ ᴛɪᴇɴᴇs ʟᴀ ʟɪsᴛᴀ ᴅᴇ ᴄᴏᴍᴀɴᴅᴏs
 ╭┈ ↷
@@ -135,6 +140,30 @@ async function sendMenu(sock, m, userId) {
 > Quita un owner del bot.
 ✧ \`.listowner\`
 > Lista de owners actuales.
+
+» ˚୨•(=^●ω●^=)• ⊹ \`Descargas\` ⊹
+> ✐ Comandos de *Descargas* para descargar archivos de varias fuentes.
+
+✧ \`#play\` \`#yt\` _[Canción]_
+> Descargar audio de YouTube
+✧ \`#mp4\` \`#ytmp4\` _[Video]_
+> Descargar video de YouTube
+✧ \`#ytsearch\` \`#search\` _[búsqueda]_
+> Buscar videos de YouTube
+✧ \`#tiktok\` \`#tt\` _[Link]_
+> Descargar video de TikTok
+✧ \`#facebook\` \`#fb\` _[Link]_
+> Descargar video de Facebook
+✧ \`#instagram\` \`#ig\` \`#reel\` _[Link]_
+> Descargar reel/post de Instagram
+✧ \`#twitter\` \`#x\` _[Link]_
+> Descargar video de Twitter/X
+✧ \`#mediafire\` \`#mf\` _[Link]_
+> Descargar archivo de MediaFire
+✧ \`#pinterest\` \`#pin\` _[búsqueda]_
+> Buscar imágenes de Pinterest
+✧ \`#nhentai\` \`#nh\` _[código]_
+> Descargar info de doujin +18
 
 » ˚୨•(=^●ω●^=)• ⊹ \`Economía\` ⊹
 > ✐ Comandos de *Economía* para ganar dinero y divertirte con tus amigos.
@@ -282,6 +311,175 @@ async function startBot() {
         await sock.sendMessage(from, { text: `Tu lid es:\n${sender}\nSolo número:\n${senderNum}` });
       }
 
+      // ========== DESCARGAS ==========
+
+      else if (text.startsWith('#play ') || text.startsWith('#yt ')) {
+        let query = text.split(' ').slice(1).join(' ')
+        if (!query) return sock.sendMessage(from, { text: '✧ Usa:#play [nombre de la canción]' })
+        await sock.sendMessage(from, { text: '⏳ Buscando...' })
+        try {
+          let res = await youtubedl(query)
+          let { title, audio } = await res.audio['128kbps'].download()
+          await sock.sendMessage(from, {
+            audio: { url: audio },
+            mimetype: 'audio/mpeg',
+            fileName: `${title}.mp3`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar el audio' })
+        }
+      }
+
+      else if (text.startsWith('#mp4 ') || text.startsWith('#ytmp4 ')) {
+        let query = text.split(' ').slice(1).join(' ')
+        if (!query) return sock.sendMessage(from, { text: '✧ Usa:#mp4 [nombre del video]' })
+        await sock.sendMessage(from, { text: '⏳ Buscando...' })
+        try {
+          let res = await youtubedl(query)
+          let { title, video } = await res.video['360p'].download()
+          await sock.sendMessage(from, {
+            video: { url: video },
+            mimetype: 'video/mp4',
+            fileName: `${title}.mp4`,
+            caption: `✧ *${title}*`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar el video' })
+        }
+      }
+
+      else if (text.startsWith('#ytsearch ') || text.startsWith('#search ')) {
+        let query = text.split(' ').slice(1).join(' ')
+        if (!query) return sock.sendMessage(from, { text: '✧ Usa:#ytsearch [búsqueda]' })
+        try {
+          let res = await youtubedl(query)
+          let txt = `✧ *Resultados para:* ${query}\n\n`
+          res.videos.slice(0, 5).forEach((v, i) => {
+            txt += `${i + 1}. *${v.title}*\n ⏱️ ${v.duration} | 👁️ ${v.views}\n 🔗 ${v.url}\n\n`
+          })
+          await sock.sendMessage(from, { text: txt.trim() })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al buscar' })
+        }
+      }
+
+      else if (text.startsWith('#tiktok ') || text.startsWith('#tt ')) {
+        let url = text.split(' ')[1]
+        if (!url ||!url.includes('tiktok.com')) return sock.sendMessage(from, { text: '✧ Usa:#tiktok [link]' })
+        await sock.sendMessage(from, { text: '⏳ Descargando...' })
+        try {
+          let res = await tiktokdl(url)
+          await sock.sendMessage(from, {
+            video: { url: res.video.no_watermark },
+            caption: `✧ *${res.description}*\n👤 @${res.author.unique_id}`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar el tiktok' })
+        }
+      }
+
+      else if (text.startsWith('#facebook ') || text.startsWith('#fb ')) {
+        let url = text.split(' ')[1]
+        if (!url ||!url.includes('facebook.com')) return sock.sendMessage(from, { text: '✧ Usa:#fb [link]' })
+        await sock.sendMessage(from, { text: '⏳ Descargando...' })
+        try {
+          let res = await facebookdl(url)
+          await sock.sendMessage(from, {
+            video: { url: res.result[0].url },
+            caption: `✧ *Video de Facebook*`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar de Facebook' })
+        }
+      }
+
+      else if (text.startsWith('#instagram ') || text.startsWith('#ig ') || text.startsWith('#reel ')) {
+        let url = text.split(' ')[1]
+        if (!url ||!url.includes('instagram.com')) return sock.sendMessage(from, { text: '✧ Usa:#ig [link]' })
+        await sock.sendMessage(from, { text: '⏳ Descargando...' })
+        try {
+          let res = await instagramdl(url)
+          for (let i of res) {
+            if (i.type === 'video') {
+              await sock.sendMessage(from, { video: { url: i.url }, caption: '✧ *Reel de Instagram*' }, { quoted: msg })
+            } else {
+              await sock.sendMessage(from, { image: { url: i.url }, caption: '✧ *Post de Instagram*' }, { quoted: msg })
+            }
+            await sleep(1000)
+          }
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar de Instagram' })
+        }
+      }
+
+      else if (text.startsWith('#twitter ') || text.startsWith('#x ')) {
+        let url = text.split(' ')[1]
+        if (!url || (!url.includes('twitter.com') &&!url.includes('x.com'))) return sock.sendMessage(from, { text: '✧ Usa:#x [link]' })
+        await sock.sendMessage(from, { text: '⏳ Descargando...' })
+        try {
+          let res = await twitterdl(url)
+          await sock.sendMessage(from, {
+            video: { url: res.video },
+            caption: `✧ *Tweet*\n${res.description}`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar de Twitter/X' })
+        }
+      }
+
+      else if (text.startsWith('#mediafire ') || text.startsWith('#mf ')) {
+        let url = text.split(' ')[1]
+        if (!url ||!url.includes('mediafire.com')) return sock.sendMessage(from, { text: '✧ Usa:#mf [link]' })
+        await sock.sendMessage(from, { text: '⏳ Descargando...' })
+        try {
+          let res = await mediafiredl(url)
+          await sock.sendMessage(from, {
+            document: { url: res.url },
+            mimetype: res.mime,
+            fileName: res.filename,
+            caption: `✧ *${res.filename}*\n📦 Tamaño: ${res.filesize}`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al descargar de MediaFire' })
+        }
+      }
+
+      else if (text.startsWith('#pinterest ') || text.startsWith('#pin ')) {
+        let query = text.split(' ').slice(1).join(' ')
+        if (!query) return sock.sendMessage(from, { text: '✧ Usa:#pin [búsqueda]' })
+        await sock.sendMessage(from, { text: '⏳ Buscando...' })
+        try {
+          let res = await pinterest(query)
+          let img = res[Math.floor(Math.random() * res.length)]
+          await sock.sendMessage(from, {
+            image: { url: img },
+            caption: `✧ *Pinterest:* ${query}`
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error al buscar en Pinterest' })
+        }
+      }
+
+      else if (text.startsWith('#nhentai ') || text.startsWith('#nh ')) {
+        let code = text.split(' ')[1]
+        if (!code) return sock.sendMessage(from, { text: '✧ Usa:#nh [código]' })
+        await sock.sendMessage(from, { text: '⏳ Buscando doujin...\n⚠️ Contenido +18' })
+        try {
+          let res = await axios.get(`https://nhentai.net/api/gallery/${code}`)
+          let data = res.data
+          let txt = `✧ *${data.title.pretty}*\n\n`
+          txt += `📖 Páginas: ${data.num_pages}\n`
+          txt += `🏷️ Tags: ${data.tags.map(t => t.name).slice(0, 5).join(', ')}\n`
+          txt += `🔗 https://nhentai.net/g/${code}`
+          await sock.sendMessage(from, {
+            image: { url: `https://i.nhentai.net/galleries/${data.media_id}/1.jpg` },
+            caption: txt
+          }, { quoted: msg })
+        } catch (e) {
+          await sock.sendMessage(from, { text: '✧ Error o doujin no encontrado' })
+        }
+      }
+
       // ========== MOD ==========
 
       else if (text === '.lock' || text === '.close') {
@@ -322,7 +520,6 @@ async function startBot() {
 ┃ 👑 𝐈𝐒 𝐂𝐀𝐋𝐈𝐍𝐆 𝐘𝐎𝐔 👑
 ┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
 ┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
-┃
 ┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
 ┃ *Salmos 37:8-9 (TLA)*
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
@@ -402,7 +599,7 @@ async function startBot() {
       }
 
       else if (text === '.daily') {
-        let tiempo = checkCooldown(sender, 'daily', 24 * 60 * 60 * 1000)
+        let tiempo = checkCooldown(sender, 'daily', 24 * 60 * 1000)
         if (tiempo) return sock.sendMessage(from, { text: `✧ Ya reclamaste tu daily, vuelve en *${tiempo}*` })
         user.money += 1000
         saveDB()
@@ -452,7 +649,7 @@ async function startBot() {
         let eleccion = args[2]?.toLowerCase()
         if (!eleccion ||!['cara','cruz'].includes(eleccion)) return sock.sendMessage(from, { text: `✧ Elige cara o cruz\nEjemplo:.cf 500 cara` })
         if (apuesta < 100) return sock.sendMessage(from, { text: `✧ La apuesta mínima es ¥100 coins` })
-        if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins en mano` })
+                if (user.money < apuesta) return sock.sendMessage(from, { text: `✧ No tienes ¥${apuesta} coins en mano` })
         let resultado = Math.random() < 0.5? 'cara' : 'cruz'
         if (eleccion === resultado) {
           user.money += apuesta
@@ -575,7 +772,7 @@ async function startBot() {
         let txt = '╭─⊹ `TUS COOLDOWNS` ⊹\n│\n'
         let comandos = ['daily', 'work', 'crime', 'slut', 'rob']
         for (let cmd of comandos) {
-          if (cd[cmd] && cd [cmd] > Date.now()) {
+          if (cd[cmd] && cd[cmd] > Date.now()) {
             txt += `│ ${cmd}: ${msToTime(cd[cmd] - Date.now())}\n`
           } else {
             txt += `│ ${cmd}: ✅ Disponible\n`
