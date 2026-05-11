@@ -75,7 +75,7 @@ function saveOwners(owners) {
 }
 
 async function crearCollage(stickersBase64) {
-  const img = new Jimp(300, 300, 0xFF202020) // Fondo gris oscuro en vez de transparente
+  const img = new Jimp(300, 300, 0xFF202020)
   let stickersValidos = 0
 
   for (let i = 0; i < stickersBase64.length && stickersValidos < 4; i++) {
@@ -100,7 +100,6 @@ async function crearCollage(stickersBase64) {
   return await img.getBufferAsync(Jimp.MIME_JPEG)
 }
 
-// ÚNICO MENÚ - BORRA CUALQUIER OTRO QUE TENGAS
 async function sendMenu(sock, m, userId) {
     const menu = `𝐇𝐨𝐥𝐚! 𝐒𝐨𝐲 𝐂𝐫𝐚𝐤𝐳𝐲 𝐛𝐨𝐭
 ᴀǫᴜɪ ᴛɪᴇɴᴇs ʟᴀ ʟɪsᴛᴀ ᴅᴇ ᴄᴏᴍᴀɴᴅᴏs
@@ -207,7 +206,6 @@ async function sendMenu(sock, m, userId) {
 
     await sock.sendMessage(m.key.remoteJid, { text: menu }, { quoted: m })
 }
-
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
   const { version } = await fetchLatestBaileysVersion();
@@ -269,7 +267,6 @@ async function startBot() {
       const hardOwners = [BOT_NUMERO, BOT_OWNER_LID, BOT_OWNER_2, BOT_OWNER_LID_2, BOT_OWNER_3, BOT_OWNER_LID_3];
       const isMod = hardOwners.includes(senderNum) || getOwners().includes(senderNum) || senderNum === botNum;
 
-      // AQUÍ SOLO DEBE HABER ESTO - BORRA CUALQUIER OTRO.menu
       if (text === '.menu') {
         await sendMenu(sock, msg, sender)
       }
@@ -366,21 +363,23 @@ async function startBot() {
         let collage = await crearCollage(pack.stickers.slice(0, 4))
         let desc = pack.desc || 'no robes Cryz dueño'
 
-        await sock.sendMessage(from, {
-          text: `*${packName}*\n${desc}`,
-          contextInfo: {
-            externalAdReply: {
-              title: packName,
-              body: desc,
-              thumbnail: collage,
-              mediaType: 2,
-              mediaUrl: '',
-              sourceUrl: '',
-              showAdAttribution: false,
-              renderLargerThumbnail: true
+        try {
+          await sock.sendMessage(from, {
+            text: `*${packName}*\n${desc}`,
+            contextInfo: {
+              externalAdReply: {
+                title: packName,
+                body: desc,
+                thumbnail: collage,
+                mediaType: 1,
+                renderLargerThumbnail: true,
+                sourceUrl: 'https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07'
+              }
             }
-          }
-        })
+          })
+        } catch (e) {
+          await sock.sendMessage(from, { text: `*${packName}*\n${desc}\n\nStickers: ${pack.stickers.length}` })
+        }
 
         await sleep(1000)
         for (let sticker of pack.stickers) {
@@ -407,7 +406,6 @@ async function startBot() {
         saveStickerDB()
         await sock.sendMessage(from, { text: `✅ Pack renombrado\n*Antes:* ${nombreViejo}\n*Ahora:* ${nombreNuevo}` })
       }
-
       else if (text.startsWith('.setstickermeta ') || text.startsWith('.setmeta ')) {
         let args = text.split(' ').slice(1).join(' ').split('|')
         if (args.length < 1) return sock.sendMessage(from, { text: '✧ Usa:.setmeta [autor] | ' })
@@ -732,7 +730,6 @@ async function startBot() {
         })
       }
 
-      // ========== COMANDOS MOD ==========
       if (!isMod) return;
 
       if (text === '.lock' || text === '.close') {
@@ -769,6 +766,7 @@ async function startBot() {
 ┃
 ┃ 🕷️ ┃ 𝐋𝐈𝐍𝐊 𝐂𝐇𝐀𝐍𝐄𝐋 🐦🍷
 ┃ ➤ https://whatsapp.com/channel/0029VbCP81gADTOEOgWQxW07
+┃
 ┃ 𝐃𝐈𝐎𝐒 𝐓𝐎𝐃𝐎 𝐏𝐎𝐃𝐄𝐑𝐎𝐒𝐎 👑🐦‍⬛🍷
 ┃ *Salmos 37:8-9 (TLA)*
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
@@ -790,9 +788,9 @@ async function startBot() {
 
         const allOwners = [...hardOwners,...getOwners(), botNum];
         const miembros = metadata.participants.filter(p =>
-    !p.admin &&
+   !p.admin &&
           p.id!== botJid &&
-    !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
+   !allOwners.includes(p.id.replace(/[^0-9]/g, ''))
         );
 
         const chunkSize = 1024;
